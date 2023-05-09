@@ -21,7 +21,10 @@ This repository contains the code for IBM simulations.
 
 ## Contents
 
-  - [:file\_folder: simulation code](main.R): Simulate blablabla
+  - [:file\_folder: functions](functions.R): Model functions
+  - [:file\_folder: parameters](parameters.R): Change parameters
+  - [:file\_folder: simulation code](main.R): Run simulations
+  
 
 ### Licenses
 
