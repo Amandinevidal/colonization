@@ -1,3 +1,5 @@
+sim <- "test"         # name your simulation
+nsim <- 1             # number of replicates
 time <- 200           # simulation time
 km <- 500             # mainland carrying capacity
 ki <- 0.4*km          # island carrying capacity
@@ -10,4 +12,5 @@ msr <- 0.2            # migration survival rate
 d <- 0.1              # extinction rate
 wmax <- 1             # maximum achievable fitness
 sigma <- 0.5          # niche width
-mu <- 0.1             # mutation rate
+mu <- 0.1             # pheno mutation rate
+seed <- 0             # if 0 random
