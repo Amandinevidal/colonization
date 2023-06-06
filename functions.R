@@ -1,3 +1,12 @@
+#### -----------------------------------------------------------------####
+#### Author : Amandine Vidal-Hosteng
+#### Encoding : UTF-8
+#### Email : a.y.vidal-hosteng@rug.nl
+#### File path : colonization/functions.R
+#### 
+#### This file contains a suite of functions designed to run the simulation
+#### -----------------------------------------------------------------####
+
 #### Population initialization ####
 # Create one tibble that initiate the population on the mainland or on the island depending on the arguments
 # k is the wanted number of individuals, ktot the actual number of individuals in the system (helps to set the id of new individuals), opt the local ecological optimum, wopt the width of the ecological trait landscape, origin is 0 for mainland and 1 for island
@@ -11,8 +20,11 @@ pop_init <- function(k,ktot,opt,wopt,origin){
     mother=0,             # mother id
     off=0,                # number of offspring produced
     mig=0,                # if 1 the ind migrate, if 0 not
-    time=1                # current time
+    time=0                # current time
   )
+  for(ind in 1:nrow(pop)){                                         # for each mainland individuals                                
+    pop$fit[ind] <- get_fitness(pop$x[ind],opt,wopt,sigma) # get local fitness
+  }
   return(pop)
 }
 
@@ -29,6 +41,7 @@ get_fitness <- function(x, opt, wmax, sigma) {
 # off_data is the offspring data set, mu the mutation rate
 mutation_event <- function(off_data,mu){
   n <- rbinom(1,nrow(off_data),mu)             # how many individuals mutate
+  nmut <<- n                                   # global var
   if(n!=0){                                    # if there is mutation
     nind <- sample(nrow(off_data),n,replace=F) # who is mutating
     for(r in nind){                            # for each

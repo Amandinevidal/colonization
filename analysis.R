@@ -8,7 +8,7 @@
 #### -----------------------------------------------------------------####
 
 rm(list = ls())
-sim <- "test1" # which simulation you want to analyse?
+sim <- "test2" # which simulation you want to analyse?
 
 #### Simulation parameters ####
 lines <- scan(paste0("results/",sim,"_1_description.txt"), what=character(), sep="\n", skip=4, quiet=TRUE)
@@ -87,3 +87,4 @@ plot.col <- ggplot2::ggplot(data=mean_summary,aes(x=t,y=mean_succmigi)) +
   ggplot2::theme(legend.position = "top",text = element_text(size = 20)) +
   ggplot2::labs(x="Time", y="Number of successful colonization", color="col") +
   ggplot2::scale_color_manual(values=col) 
+# fitness landscape ?
