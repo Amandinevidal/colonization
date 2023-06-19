@@ -12,23 +12,22 @@
 
 #### Functions ####
 
+log.path <- paste0("results/",sim,"_log.txt")
 warning <- function(w) {
   cat("Warning!", w, '\n')
   cont <- readline('Do you wish to continue? [Y/N] ')
-  if(cont != 'Y') stop('Simulation aborted by user')
+  if(cont != 'Y') {stop('Simulation aborted by user')}else{write(w, log.path, append=TRUE)}
 }
 
 #### PARAMETERS SET ####
+write("Parameter check", log.path, append=TRUE)
 if(length(list.files(path="results/",pattern=sim))!=0){w<-"Simulation name already existing, results will be overwritten";warning(w)}
 if(nsim<=0) {stop("Error: Number of replicates, nsim, equal to or less than 0")}
 if(time<=0) {stop("Error: Simulation time, time, equal to or less than 0")}
-if(km<=0) {stop("Error: Empty mainland")}
-if(ki<=0){stop("Error: Empty island")}
-if(km<=ki){w<-"Mainland carrying capacity is lower or equal to that of the island";warning(w)}
-if(optm<0){stop("Error: Mainland ecological optimum is negative")}
-if(opti<0){stop("Error: Island ecological optimum is negative")}
-if(woptm<0){stop("Error: Mainland ecological niche width is negative")}
-if(wopti<0){stop("Error: Island ecological niche width is negative")}
+if(k<=0) {stop("Error: Empty mainland")}
+if(ipk<=0){stop("Error: Empty island")}
+if(dopt<0){stop("Error: Difference between mainlannd and island optimums is negative")}
+if(wopt<0){stop("Error: Ecological niche width is negative")}
 if(mr==0){w<-"Migration rate is equal to 0";warning(w)}
 if(mr<0){stop("Negative migration rate")}
 if(msrm==0){w<-"Mainland-island survival migration rate is equal to 0";warning(w)}

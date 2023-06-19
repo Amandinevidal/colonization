@@ -10,22 +10,39 @@
 #### Population initialization ####
 # Create one tibble that initiate the population on the mainland or on the island depending on the arguments
 # k is the wanted number of individuals, ktot the actual number of individuals in the system (helps to set the id of new individuals), opt the local ecological optimum, wopt the width of the ecological trait landscape, origin is 0 for mainland and 1 for island
-pop_init <- function(k,ktot,opt,wopt,origin){
-  pop <- tibble(
-    i=seq(ktot+1,ktot+k), # individuals id
-    x=rnorm(k,opt,wopt),  # ecological trait
-    fit=NA,               # fitness value according to local optimum
-    origin=origin,        # birth location
-    loc=origin,           # current location
-    mother=0,             # mother id
-    off=0,                # number of offspring produced
-    mig=0,                # if 1 the ind migrate, if 0 not
-    time=0                # current time
+pop_init <- function(k,ipk,dopt,wopt,sigma){
+  # MAINLAND POP
+  curr_main <- tibble(
+    i=seq(1,k),         # individuals id
+    x=rnorm(k,0,wopt),  # ecological trait
+    fit=NA,             # fitness value according to local optimum
+    origin=0,           # birth location
+    loc=0,              # current location
+    mother=0,           # mother id
+    off=0,              # number of offspring produced
+    mig=0,              # if 1 the ind migrate, if 0 not
+    time=0              # current time
   )
-  for(ind in 1:nrow(pop)){                                         # for each mainland individuals                                
-    pop$fit[ind] <- get_fitness(pop$x[ind],opt,wopt,sigma) # get local fitness
+  for(ind in 1:nrow(curr_main)){                                         # for each mainland individuals                    
+    curr_main$fit[ind] <- get_fitness(curr_main$x[ind],0,wopt,sigma)     # get local fitness
   }
-  return(pop)
+  # ISLAND POP
+  curr_isl <- tibble(
+    i=seq(k+1,k+ipk*k),     # individuals id
+    x=rnorm(ipk*k,0,wopt),  # ecological trait
+    fit=NA,                # fitness value according to local optimum
+    origin=1,              # birth location
+    loc=1,                 # current location
+    mother=0,              # mother id
+    off=0,                 # number of offspring produced
+    mig=0,                 # if 1 the ind migrate, if 0 not
+    time=0                 # current time
+  )
+  for(ind in 1:nrow(curr_isl)){                                         # for each mainland individuals                     
+    curr_isl$fit[ind] <- get_fitness(curr_isl$x[ind],dopt,wopt,sigma) # get local fitness
+  }
+  curr_main <<- curr_main
+  curr_isl <<- curr_isl
 }
 
 #### Fitness function ####
@@ -73,7 +90,7 @@ birth_event <- function(curr_data,ktot,t){    # apply it to curr_main and curr_i
     if (!is.na(noff)&&noff!=0){                  # if there is offspring
       for (j in seq(noff)){                      # for each offspring
         ktot <- ktot + 1                         # add new ind
-        off_data <- off_data %>% add_row(i=ktot,x=curr_data$x[ind],fit=NA,origin=curr_data$loc[ind],loc=curr_data$loc[ind],mother=curr_data$i[ind],off=NA,mig=NA,time=t) # add to the offspring pool
+        off_data <- off_data %>% add_row(i=ktot,x=curr_data$x[ind],fit=NA,origin=curr_data$loc[ind],loc=curr_data$loc[ind],mother=curr_data$i[ind],off=0,mig=0,time=t) # add to the offspring pool
       }
     }
   }
@@ -104,10 +121,14 @@ migration_event <- function(off_data,mr,msr){
 # This function randomly selects individuals among the parent pool that die, according to the death rate, and remove it from the population data set
 # curr_data is the local population data set and d the death rate
 death_event <- function(curr_data,d){
-  dn <- rbinom(1,nrow(curr_data),d)                 # how many individuals are going to die
-  dind <- sample(seq(nrow(curr_data)),dn,replace=F) # who is dying
-  curr_data <- curr_data[-dind,]                    # remove them
-  nindglob <<- length(dind)                         # get out the number of death
+  dn <- rbinom(1,nrow(curr_data),d)                   # how many individuals are going to die
+  if(dn!=0){
+    dind <- sample(seq(nrow(curr_data)),dn,replace=F) # who is dying
+    curr_data <- curr_data[-dind,]                    # remove them
+    nindglob <<- length(dind)                        # get out the number of death
+  } else {
+    nindglob <<- 0                                   # get out the number of death
+  }
   return(curr_data)
 }
 
@@ -115,11 +136,15 @@ death_event <- function(curr_data,d){
 # This function combines rows from mainland and island populations. It calculates the probability of being colonizer for each ind based on the fit column and randomly selects a number of individuals (based on the number of death) based on this probability.
 competition_event <- function(location,dind,off_main,off_isl){
   comp <- rbind(off_main[which(off_main$loc==location),],off_isl[which(off_isl$loc==location),]) # Combine rows from off_main and off_isl based on the specified location
-  comp$prob <- NA                                                                                # Add a new column named prob to the comp data frame and initialize it as NA
-  for (ind in seq(nrow(comp))){                                                                  # Calculate the individual probability for each ind
-    comp$prob[ind] <- comp$fit[ind]/sum(comp$fit)
+  if(nrow(comp)>dind){              # if there are more competitors than places available
+    comp$prob <- NA                 # Add a new column named prob to the comp data frame and initialize it as NA
+    for (ind in seq(nrow(comp))){   # Calculate the individual probability for each ind
+      comp$prob[ind] <- comp$fit[ind]/sum(comp$fit)
+    }
+    win <- comp[sample(seq(nrow(comp)),size=dind,replace=F,prob=comp$prob),-10] # Randomly sample dind number of rows from the comp data frame without replacement and by using the probabilities in the prob column as weights for sampling, also exclude the 10th column from the resulting win data frame because not usefull after
+  } else { # if there are less competitors than places available
+    win <- comp
   }
-  win <- comp[sample(seq(nrow(comp)),size=dind,replace=F,prob=comp$prob),-10]                    # Randomly sample dind number of rows from the comp data frame without replacement and by using the probabilities in the prob column as weights for sampling, also exclude the 10th column from the resulting win data frame because not usefull after
   return(win)
 }
 
