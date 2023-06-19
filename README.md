@@ -7,11 +7,17 @@ This repository contains the code for IBM simulations.
 
 ## Contents
 
-- [:file_folder: R](R): R code
-  - [:page_facing_up: functions](functions.R): Model functions
-  - [:page_facing_up: parameters](parameters.R): Change parameters
-  - [:page_facing_up: simulation code](main.R): Run simulations
-- [:file_folder: results](results): Results files
+- [:file_folder: R](R)
+  - [:page_facing_up: analysis.R]()
+  - [:page_facing_up: check_limits.R]()
+  - [:page_facing_up: check_parameters.R]()
+  - [:page_facing_up: functions.R]()
+  - [:page_facing_up: main.R]()
+  - [:page_facing_up: parameters.R]()
+- [:file_folder: results](results)
+  - [:page_facing_up:](): \_log.txt = simulation details
+  - [:page_facing_up:](): \_results.txt = populations results
+  - [:page_facing_up:](): \_summary.txt = variable means over time
 
 ### Licenses
 
