@@ -23,7 +23,7 @@ write(paste("Simulation seed:",seed),file=paste0("results/",sim,"_log.txt"),appe
 write(paste(readLines("R/parameters.R",warn=FALSE)),file=paste0("results/",sim,"_log.txt"),append = T)
 
 #### Simulations set ####
-for(run in 3:nsim){
+for(run in 1:nsim){
   
   #### Files initialization for replicate ####
   file.create(paste0("results/",sim,"_",run,"_results.txt")) # Table that save all individuals existing in the system at each time step: i (individual id), x (ecological trait), fit (fitness value according the the individual location), origin (where the individual is born), loc (individual's location), mother (individual that gave birth to the focused one), off (number of offpsring given by the focused individual at this time step), mig (did this individual migrate at this time step, if 0 no, if 1 yes), time (current time)

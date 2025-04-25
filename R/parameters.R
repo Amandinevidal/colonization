@@ -7,7 +7,7 @@
 #### This file contains a list of parameters to set for the simulation 
 #### -----------------------------------------------------------------####
 
-sim <- "test_birth"   # name your simulation
+sim <- "test_seed_to_compare"   # name your simulation
 nsim <- 1             # number of replicates
 time <- 2            # simulation time
 k <- 5000             # mainland carrying capacity
@@ -21,4 +21,4 @@ d <- 0.1              # death rate
 wmax <- 1             # maximum achievable fitness
 sigma <- 0.5          # niche width
 mu <- 1               # pheno mutation rate
-seed <- runif(1)      # save random seed
+seed <- 0.91687577450648 #runif(1)       # save random seed
