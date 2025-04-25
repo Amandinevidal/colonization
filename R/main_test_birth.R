@@ -11,7 +11,7 @@
 #### Files initialization / Library / environment ####
 rm(list = ls())                                                                               # clear environment
 library(tidyverse)                                                                            # needed package
-source("R/functions.R")                                                                       # import functions
+source("R/functions_set_seed_modified.R")                                                                       # import functions
 source("R/parameters.R") 
 
 set.seed(seed)
@@ -40,7 +40,7 @@ for(run in 3:nsim){
   if(!file.exists(paste0("results/",sim,"_",run,"_summary.txt"))){warning("ERROR with summary.txt: not existing")}
 
     #### Simulation initialization ####
-  pop_init(k,ipk,dopt,wopt,sigma,wmax)              # mainland and island population tibble initialization
+  pop_init(k,ipk,dopt,wopt,sigma,wmax,seed)              # mainland and island population tibble initialization
   pop <- as.matrix(rbind(curr_main,curr_isl))  # total pop
   ktot <- nrow(pop)                            # total number of individuals
   write.table(pop,file=paste0("results/",sim,"_",run,"_results.txt"),append = T,col.names =F) # save total pop
@@ -76,22 +76,22 @@ for(run in 3:nsim){
       if(descendants != offspring) {cat("TIME",t,"ERROR with mother:", ind, "\n")}
     }
     
-    off_isl <- birth_event_isl(curr_isl,ktot,t)    # birth event on island
+    off_isl <- birth_event_isl(curr_isl,ktot,t,seed)    # birth event on island
     ktot <- ktot + nrow(off_isl)                   # update total number of individuals
     bm <- nrow(off_main)                           # save total number of birth events on mainland 
     bi <- nrow(off_isl)                            # save total number of birth events on island
     
     # Mutation event
-    off_main <- mutation_event(off_main,mu) # mutation event on mainland
+    off_main <- mutation_event(off_main,mu,seed) # mutation event on mainland
     mutm <- nmut                            # save total number of mutation events on mainland
-    off_isl <- mutation_event(off_isl,mu)   # mutation event on island
+    off_isl <- mutation_event(off_isl,mu,seed)   # mutation event on island
     muti <- nmut                            # save total number of mutation events on island
     prom <- max(off_main$x)-min(off_main$x) # range of the trait distribution of mainland offspring pool after mutation
     proi <- max(off_isl$x)-min(off_isl$x)   # range of the trait distribution of island offspring pool after mutation
     
     # Migration event
-    off_main <- migration_event(off_main,mr,msrm)                         # migration event on mainland
-    off_isl <- migration_event(off_isl,mr,msri)                           # migration event on island
+    off_main <- migration_event(off_main,mr,msrm,seed)                         # migration event on mainland
+    off_isl <- migration_event(off_isl,mr,msri,seed)                           # migration event on island
     migm <- length(which(off_main[,8]==1))                                # save total number of migration events on mainland
     migi <- length(which(off_isl[,8]==1))                                 # save total number of migration events on island
     prmm <- max(subset(off_main,loc==1)$x)-min(subset(off_main,loc==1)$x) # phenotypic range of the migrating pool from the mainland to the island
@@ -106,9 +106,9 @@ for(run in 3:nsim){
     } # allocate a fitness value to island offspring according to their location 
     
     # Death event
-    curr_main <- death_event(curr_main,d) # death event on mainland
+    curr_main <- death_event(curr_main,d,seed) # death event on mainland
     dm <- nindglob                        # total number of death events on mainland
-    curr_isl <- death_event(curr_isl,d)   # death event on island
+    curr_isl <- death_event(curr_isl,d,seed)   # death event on island
     di <- nindglob                        # total number of death events on island
     
     # check birth rate and death rate
@@ -116,8 +116,8 @@ for(run in 3:nsim){
     if(dm>bm){write(paste("Number of death > number of birth on island",t),log.path,append=T)}
     
     # Competition event 
-    comp_main <- competition_event(0,dm,off_main,off_isl)                   # competition event on mainland
-    comp_isl <- competition_event(1,di,off_main,off_isl)                    # competition event on island
+    comp_main <- competition_event(0,dm,off_main,off_isl,seed)                   # competition event on mainland
+    comp_isl <- competition_event(1,di,off_main,off_isl,seed)                    # competition event on island
     ebi <- length(which(comp_isl$mig==0))                                   # successful competitors on island that come from the island (natives)
     emigm <- length(which(comp_isl$mig==1))                                 # successful competitors on island that come from the mainland (migrants)
     prcm <- max(subset(comp_isl,mig==1)$x)-min(subset(comp_isl,mig==1)$x)   # phenotypic range of the colonizing pool that colonize the island from the mainland
