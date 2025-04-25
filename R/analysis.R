@@ -8,10 +8,10 @@
 #### -----------------------------------------------------------------####
 
 rm(list = ls())
-sim <- "test2" # which simulation you want to analyse?
+sim <- "limit_no_migration" # which simulation you want to analyse?
 
 #### Simulation parameters ####
-lines <- scan(paste0("results/",sim,"_1_description.txt"), what=character(), sep="\n", skip=4, quiet=TRUE)
+lines <- scan(paste0("results/",sim,"_log.txt"), what=character(), sep="\n", skip=4, quiet=TRUE)
 tc <- textConnection(lines)
 source(tc)
 close(tc)

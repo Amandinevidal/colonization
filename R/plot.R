@@ -1,0 +1,2195 @@
+library(ggplot2)
+library(ggridges)
+
+#### FUNCTIONS ####
+mean_ci <- function(vec){ # calcul mean and confidence interval for each line (time)
+  result <- c(NA,NA,NA)
+  if(!is.null(vec)){
+    mean <- mean(vec,na.rm=T) # mean
+    sd <- sd(vec,na.rm=T) # standard deviation
+    se <- sd/(sqrt(length(vec))-1) # standard error
+    ci <- 1.96*se # confidence interval
+    result[1] <- mean # save for each time
+    result[2] <- mean+ci # save upper values ci
+    result[3] <- mean-ci # save lower values ci
+  }
+  return(result) # return a table of mean and ci values for each time
+}
+
+select_column <- function(column,mylist) { # for each column (each var) concatenate values and calculate mean and confidence interval
+  ref_column <- mylist[[1]][,column]
+  concatenate <- ref_column
+  for (i in 2:length(mylist)) {
+    take_column <- mylist[[i]][1:length(ref_column),column]
+    concatenate <- cbind(concatenate,take_column)
+  }
+  mean_df <- data.frame(mean=rep(NA,length(ref_column)),ciupp=NA,cidown=NA)
+  for(i in 1:dim(concatenate)[1]){
+    v <- mean_ci(concatenate[i,])
+    mean_df[i,]$mean <- v[1]
+    mean_df[i,]$ciupp <- v[2]
+    mean_df[i,]$cidown <- v[3]
+  }
+  return(mean_df) # vecteur avec les bonnes infos info <- (mean, ci, sd)
+}
+
+#### DATA GENE ####
+sim <- "sim14"
+run <- seq(1,2)
+list_files <- list()
+for(r in run){
+  file  <- read.table(paste0("results/",sim,"_",r,"_summary.txt"))
+  list_files[[r]] <- file[,-1]
+}
+var <- c("nm","ni","xm","xi","bm","bi","mutm","muti","migm","migi","dm","di","ebm","ebi","emigm","emigi","prpm","prpi","prom","proi","prmm","prmi","prcm","prci")
+mean_df_fin <- data.frame(time=seq(1,250))
+for(v in 1:length(var)){
+  c <- select_column(v+1,list_files)
+  colnames(c) <- c(paste0(var[v],"_mean"),paste0(var[v],"_ciupp"),paste0(var[v],"_cidown"))
+  mean_df_fin <- cbind(mean_df_fin,c)
+}
+
+write.table(mean_df_fin,file=paste0("results/",sim,"_summary_mean.txt"),sep=" ",col.names = T)
+
+#verify means
+# mean_df_fin[1,]$xm_mean # -0.002526871
+# mean_df_fin[1,]$muti_mean # 18
+# mean_df_fin[1,]$emigm_mean #35.1
+# testxm <- c()
+# testmuti <- c()
+# testemigm <- c()
+# for(i in seq(1,10)){
+#   testemigm <- c(testemigm,list_files[[i]][1,16])
+# }
+# mean(testemigm)
+
+
+#### DATASET ####
+# variables average over time in summary file
+# "nm","ni","xm","xi","bm","bi","mutm","muti","migm","migi","dm","di","ebm","ebi","emigm","emigi","prpm","prpi","prom","proi","prmm","prmi","prcm","prci"
+baseline <- read.table("results/sim2_summary_mean.txt")
+baseline$probacolm <- baseline$emigm_mean/baseline$migm_mean
+baseline$probacoli <- baseline$emigi_mean/baseline$migi_mean
+longtime <- read.table("results/sim3_summary_mean.txt")
+diffopt2 <- read.table("results/sim4_summary_mean.txt")
+diffopt4 <- read.table("results/sim6_summary_mean.txt")
+bigpop <- read.table("results/sim8_summary_mean.txt")
+diffopt0.5 <- read.table("results/sim10_summary_mean.txt")
+nomig <- read.table("results/sim11_summary_mean.txt")
+baselinewopt <- read.table("results/sim12_summary_mean.txt")
+baselinewopt$probacolm <- baselinewopt$emigm_mean/baselinewopt$migm_mean
+baselinewopt$probacoli <- baselinewopt$emigi_mean/baselinewopt$migi_mean
+baselinewopt1d <- read.table("results/sim13_summary_mean.txt")
+baselinewopt1d$probacolm <- baselinewopt1d$emigm_mean/baselinewopt1d$migm_mean
+baselinewopt1d$probacoli <- baselinewopt1d$emigi_mean/baselinewopt1d$migi_mean
+baselinewopt2d <- read.table("results/sim14_summary_mean.txt")
+baselinewopt2d$probacolm <- baselinewopt2d$emigm_mean/baselinewopt2d$migm_mean
+baselinewopt2d$probacoli <- baselinewopt2d$emigi_mean/baselinewopt2d$migi_mean
+
+# variables at each time in results file
+# "i","x","fit","or","loc","mom","off","mig","age","t"
+baseline.pop <- read.table("results/sim2_1_results.txt")
+baseline.pop <- baseline.pop[,-1]
+colnames(baseline.pop) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+baseline.popinit <- baseline.pop[which(baseline.pop$t==0),]
+baseline.popmid <- baseline.pop[which(baseline.pop$t==50),]
+
+baselinewopt.pop <- read.table("results/sim12_1_results.txt")
+baselinewopt.pop <- baselinewopt.pop[,-1]
+colnames(baselinewopt.pop) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+baselinewopt.pop.mig <- subset(baselinewopt.pop,mig==1)
+baselinewopt.pop.mig.sub <- subset(baselinewopt.pop.mig,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt.pop.sub <- subset(baselinewopt.pop,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt.pop.main <- subset(baselinewopt.pop,loc==0)
+baselinewopt.pop.main.sub <- subset(baselinewopt.pop.main,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt.pop.isl <- subset(baselinewopt.pop,loc==1)
+baselinewopt.pop.isl.sub <- subset(baselinewopt.pop.isl,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+
+longtime.popinit <- read.table("results/sim3_1_results.txt")
+longtime.popinit <- longtime.popinit[,-1]
+colnames(longtime.popinit) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+longtime.popinit <- longtime.popinit[which(longtime.popinit$t==0),]
+diffopt0.5.pop <- read.table("results/sim10_1_results.txt")
+diffopt0.5.popinit <- diffopt0.5.popinit[,-1]
+colnames(diffopt0.5.popinit) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+diffopt0.5.popinit <- diffopt0.5.popinit[which(diffopt0.5.popinit$t==0),]
+diffopt2.popinit <- read.table("results/sim4_1_results.txt")
+diffopt2.popinit <- diffopt2.popinit[,-1]
+colnames(diffopt2.popinit) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+diffopt2.popinit <- diffopt2.popinit[which(diffopt2.popinit$t==0),]
+diffopt4.pop <- read.table("results/sim6_1_results.txt")
+diffopt4.pop <- diffopt4.pop[,-1]
+colnames(diffopt4.pop) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+diffopt4.popinit <- diffopt4.pop[which(diffopt4.pop$t==0),]
+bigpop.popinit <- read.table("results/sim8_1_results.txt")
+bigpop.popinit <- bigpop.popinit[,-1]
+colnames(bigpop.popinit) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+bigpop.popinit <- bigpop.popinit[which(bigpop.popinit$t==0),]
+
+baselinewopt2d.pop <- read.table("results/sim14_1_results.txt")
+baselinewopt2d.pop <- baselinewopt2d.pop[,-1]
+colnames(baselinewopt2d.pop) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+baselinewopt2d.pop.mig <- subset(baselinewopt2d.pop,mig==1)
+baselinewopt2d.pop.mig.sub <- subset(baselinewopt2d.pop.mig,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt2d.pop.sub <-subset(baselinewopt2d.pop,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt2d.pop.main <- subset(baselinewopt2d.pop,loc==0)
+baselinewopt2d.pop.main.sub <-subset(baselinewopt2d.pop.main,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt2d.pop.isl <- subset(baselinewopt2d.pop,loc==1)
+baselinewopt2d.pop.isl.sub <-subset(baselinewopt2d.pop.isl,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+
+# dopt1
+baselinewopt1d.pop <- read.table("results/sim13_1_results.txt")
+baselinewopt1d.pop <- baselinewopt1d.pop[,-1]
+colnames(baselinewopt1d.pop) <- c("i","x","fit","or","loc","mom","off","mig","age","t")
+baselinewopt1d.pop.mig <- subset(baselinewopt1d.pop,mig==1)
+baselinewopt1d.pop.mig.sub <- subset(baselinewopt1d.pop.mig,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt1d.pop.sub <- subset(baselinewopt1d.pop,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt1d.pop.main <- subset(baselinewopt1d.pop,loc==0)
+baselinewopt1d.pop.main.sub <-subset(baselinewopt1d.pop.main,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+baselinewopt1d.pop.isl <- subset(baselinewopt1d.pop,loc==1)
+baselinewopt1d.pop.isl.sub <-subset(baselinewopt1d.pop.isl,t==0|t==30|t==60|t==90|t==120|t==150|t==180|t==210|t==240)
+
+#### HYPOTHESIS 1 ####
+colors <- c("Mainland"="#E69F00","Island"="#0072B2")
+h1.1 <- ggplot2::ggplot(data = baselinewopt, aes(x=time,y=probacolm)) +
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=probacolm,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=probacoli,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Probability of successful colonization", color="model")+
+  ylim(c(0,0.5))+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 40),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/proba_col_baseline.png",width=800,height = 800)
+print(h1.1)
+dev.off()
+h1.1b <- ggplot2::ggplot(data = baselinewopt1d, aes(x=time,y=probacolm)) +
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=probacolm,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=probacoli,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Probability of successful colonization", color="model")+
+  ylim(c(0,0.5))+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 40),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/proba_col_baselined1.png",width=800,height = 800)
+print(h1.1b)
+dev.off()
+h1.1c <- ggplot2::ggplot(data = baselinewopt2d, aes(x=time,y=probacolm)) +
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=probacolm,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=probacoli,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Probability of successful colonization", color="model")+
+  ylim(c(0,0.5))+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 40),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/proba_col_baselined2.png",width=800,height = 800)
+print(h1.1c)
+dev.off()
+
+h1.2 <- ggplot2::ggplot(data = baselinewopt, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=migm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=migi_mean,color="Island"),linewidth=1) +
+  ylim(c(0,160))+
+  ggplot2::labs(x="Time (in generation)", y="Propagule pressure", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 40),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/propagpre_baseline.png",width=800,height = 800)
+print(h1.2)
+dev.off()
+h1.2b <- ggplot2::ggplot(data = baselinewopt1d, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt1d,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt1d,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=migm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=migi_mean,color="Island"),linewidth=1) +
+  ylim(c(0,160))+
+  ggplot2::labs(x="Time (in generation)", y="Propagule pressure", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 40),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/propagpre_baseline1d.png",width=800,height = 800)
+print(h1.2b)
+dev.off()
+h1.2c <- ggplot2::ggplot(data = baselinewopt2d, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt2d,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt2d,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=migm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=migi_mean,color="Island"),linewidth=1) +
+  ylim(c(0,160))+
+  ggplot2::labs(x="Time (in generation)", y="Propagule pressure", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 40),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/propagpre_baseline2d.png",width=800,height = 800)
+print(h1.2c)
+dev.off()
+
+h1.3 <- ggplot2::ggplot(data = baselinewopt, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=emigm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=emigi_mean,color="Island"),linewidth=1) +
+  ylim(c(0,25))+
+  ggplot2::labs(x="Time (in generation)", y="Sucessful colonizations", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/successcol_baseline.png",width=800,height = 800)
+print(h1.3)
+dev.off()
+
+h1.3b <- ggplot2::ggplot(data = baselinewopt1d, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt1d,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt1d,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=emigm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=emigi_mean,color="Island"),linewidth=1) +
+  ylim(c(0,25))+
+  ggplot2::labs(x="Time (in generation)", y="Succesful colonization", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/successcol_baseline1d.png",width=800,height = 800)
+print(h1.3b)
+dev.off()
+
+h1.3c <- ggplot2::ggplot(data = baselinewopt2d, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt2d,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt2d,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=emigm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=emigi_mean,color="Island"),linewidth=1) +
+  ylim(c(0,25))+
+  ggplot2::labs(x="Time (in generation)", y="Succesful colonization", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/successcol_baseline2d.png",width=800,height = 800)
+print(h1.3c)
+dev.off()
+
+h1.4 <- ggplot2::ggplot(data = baselinewopt, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=xm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt,aes(x=time,y=xi_mean,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/avtrait_baseline",width=800,height = 800)
+print(h1.4)
+dev.off()
+
+h1.4b <- ggplot2::ggplot(data = baselinewopt1d, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt1d,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt1d,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=xm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=xi_mean,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/avtrait_baseline1d",width=800,height = 800)
+print(h1.4b)
+dev.off()
+
+h1.4c <- ggplot2::ggplot(data = baselinewopt2d, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt2d,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baselinewopt2d,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=xm_mean,color="Mainland"),linewidth=1) +
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=xi_mean,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/avtrait_baseline2d.png",width=800,height = 800)
+print(h1.4c)
+dev.off()
+
+h1.4d <- ggplot2::ggplot(data = baselinewopt2d, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt2d,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt2d,aes(x=time,y=xi_mean,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/avtraiti_baseline2d.png",width=800,height = 800)
+print(h1.4d)
+dev.off()
+
+h1.4e <- ggplot2::ggplot(data = baselinewopt1d, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_ribbon(data=baselinewopt1d,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baselinewopt1d,aes(x=time,y=xi_mean,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/avtraiti_baseline1d.png",width=800,height = 800)
+print(h1.4e)
+dev.off()
+
+h1.4f <- ggplot2::ggplot(data = baseline, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=xi_mean,color="Island"),linewidth=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/h1/avtraiti_baseline.png",width=800,height = 800)
+print(h1.4f)
+dev.off()
+
+main.baselinewopt.pop <- ggplot(baselinewopt.pop.sub, aes(x = x, y = as.factor(t), color = as.factor(loc), point_color = as.factor(loc), fill = as.factor(loc))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Location") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of populations") +
+  theme_ridges(center = T)
+png("results/plot/h1/poploc_traitdist_baseline.png",width=800,height = 800)
+print(main.baselinewopt.pop)
+dev.off()
+
+main.baselinewopt.pop <- ggplot(baselinewopt.pop.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of populations") +
+  theme_ridges(center = T)
+png("results/plot/h1/popor_traitdist_baseline.png",width=800,height = 800)
+print(main.baselinewopt.pop)
+dev.off()
+
+main.baselinewopt <- ggplot(baselinewopt.pop.mig.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of successful migrants") +
+  theme_ridges(center = T)
+png("results/plot/h1/successcol_traitdist_baseline.png",width=800,height = 800)
+print(main.baselinewopt)
+dev.off()
+
+main.baselinewopt2dpop <- ggplot(baselinewopt2d.pop.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of local populations") +
+  theme_ridges(center = T)
+png("results/plot/h1/popor_traitdist_baseline2d.png",width=800,height = 800)
+print(main.baselinewopt2dpop)
+dev.off()
+
+main.baselinewopt2dpop2 <- ggplot(baselinewopt2d.pop.sub, aes(x = x, y = as.factor(t), color = as.factor(loc), point_color = as.factor(loc), fill = as.factor(loc))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Location") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of local populations") +
+  theme_ridges(center = T)
+png("results/plot/h1/poploc_traitdist_baseline2d2.png",width=800,height = 800)
+print(main.baselinewopt2dpop2)
+dev.off()
+
+main.baselinewopt2d <- ggplot(baselinewopt2d.pop.mig.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of successful migrants") +
+  theme_ridges(center = T)
+png("results/plot/h1/successcol_traitdist_baselined2.png",width=800,height = 800)
+print(main.baselinewopt2d)
+dev.off()
+
+main.baselinewopt1d.mig <- ggplot(baselinewopt1d.pop.mig.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of successful migrants") +
+  theme_ridges(center = T)
+png("results/plot/h1/successcol_traitdist_baselined1.png",width=800,height = 800)
+print(main.baselinewopt1d.mig)
+dev.off()
+
+main.baselinewopt1d.pop <- ggplot(baselinewopt1d.pop.sub, aes(x = x, y = as.factor(t), color = as.factor(loc), point_color = as.factor(loc), fill = as.factor(loc))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Location") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of populations") +
+  theme_ridges(center = T)
+png("results/plot/h1/poploc_traitdist_baselined1.png",width=800,height = 800)
+print(main.baselinewopt1d.pop)
+dev.off()
+
+main.baselinewopt1d.pop2 <- ggplot(baselinewopt1d.pop.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of populations") +
+  theme_ridges(center = T)
+png("results/plot/h1/popor_traitdist_baselined1.png",width=800,height = 800)
+print(main.baselinewopt1d.pop2)
+dev.off()
+
+h1.5 <- ggplot(baselinewopt.pop.main.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of mainland population") +
+  theme_ridges(center = T)
+png("results/plot/h1/mainpop_traitdist_baseline.png",width=800,height = 800)
+print(h1.5)
+dev.off()
+
+h1.5c <- ggplot(baselinewopt2d.pop.main.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of mainland population") +
+  theme_ridges(center = T)
+png("results/plot/h1/mainpop_traitdist_baselined2.png",width=800,height = 800)
+print(h1.5)
+dev.off()
+
+h1.6 <- ggplot(baselinewopt.pop.isl.sub, aes(x = x, y = as.factor(t), color = as.factor(or), point_color = as.factor(or), fill = as.factor(or))) +
+  geom_density_ridges(
+    jittered_points = TRUE, scale = .95, rel_min_height = .01,
+    point_shape = ".", point_size = 2, size = 0.45,
+    position = position_points_jitter(height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name="Time") +
+  scale_x_continuous(expand = c(0, 0), name = "Ecological trait") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("Mainland", "Island"),name = "Origin") +
+  scale_color_manual(values = c("#D55E00", "#0072B2"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00", "#0072B2"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    override.aes = list(
+      fill = c("#D55E00A0", "#0072B2A0"),
+      color = NA, point_color = NA)
+  )
+  ) +
+  ggtitle("Ecological trait distribution of island population") +
+  theme_ridges(center = T)
+png("results/plot/h1/islpop_traitdist_baseline.png",width=800,height = 800)
+print(h1.6)
+dev.off()
+
+test <- subset(baselinewopt2d.pop.main,t==240)
+test2 <-subset(baselinewopt2d.pop.isl,t==240)
+test3 <- subset(baselinewopt.pop.main, t==240)
+test4 <- subset(baselinewopt.pop.isl, t==240)
+test5 <- subset(baselinewopt1d.pop.main, t==240)
+test6 <- subset(baselinewopt1d.pop.isl, t==240)
+
+h1.7i <- ggplot(test2, aes(x=x)) +
+  geom_histogram(data=subset(test2,or==0), aes(fill="Mainland"),alpha=0.4) +
+  geom_histogram(data=subset(test2,or==1), aes(fill="Island"),alpha=0.4)+
+  ggplot2::labs(x="Ecological trait on island", color="Origin")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_fill_manual(values=colors)
+png("results/plot/h1/islpop_traitdist_baseline2d.png",width=800,height = 800)
+print(h1.7i)
+dev.off()
+
+h1.7m <- ggplot(test, aes(x=x)) +
+  geom_histogram(data=subset(test,or==0), aes(fill="Mainland"),alpha=0.4) +
+  geom_histogram(data=subset(test,or==1), aes(fill="Island"),alpha=0.4)+
+  ggplot2::labs(x="Ecological trait on mainland", color="Origin")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_fill_manual(values=colors)
+png("results/plot/h1/mainpop_traitdist_baseline2d.png",width=800,height = 800)
+print(h1.7m)
+dev.off()
+
+h1.7cm <- ggplot(test3, aes(x=x)) +
+  geom_histogram(data=subset(test3,or==0), aes(fill="Mainland"),alpha=0.4) +
+  geom_histogram(data=subset(test3,or==1), aes(fill="Island"),alpha=0.4)+
+  ggplot2::labs(x="Ecological trait on mainland", color="Origin")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_fill_manual(values=colors)
+png("results/plot/h1/mainpop_traitdist_baseline.png",width=800,height = 800)
+print(h1.7cm)
+dev.off()
+
+hi.7ci <- ggplot(test4, aes(x=x)) +
+  geom_histogram(data=subset(test4,or==0), aes(fill="Mainland"),alpha=0.4) +
+  geom_histogram(data=subset(test4,or==1),aes(fill="Island"),alpha=0.4)+
+  ggplot2::labs(x="Ecological trait on island", color="Origin")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_fill_manual(values=colors)
+png("results/plot/h1/islpop_traitdist_baseline.png",width=800,height = 800)
+print(hi.7ci)
+dev.off()
+
+h1.7bm <- ggplot(test5, aes(x=x)) +
+  geom_histogram(data=subset(test5,or==0), aes(fill="Mainland"),alpha=0.4) +
+  geom_histogram(data=subset(test5,or==1), aes(fill="Island"),alpha=0.4)+
+  ggplot2::labs(x="Ecological trait on mainland", color="Origin")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_fill_manual(values=colors)
+png("results/plot/h1/mainpop_traitdist_baselined1.png",width=800,height = 800)
+print(h1.7bm)
+dev.off()
+
+hi.7bi <- ggplot(test6, aes(x=x)) +
+  geom_histogram(data=subset(test6,or==0), aes(fill="Mainland"),alpha=0.4) +
+  geom_histogram(data=subset(test6,or==1),aes(fill="Island"),alpha=0.4)+
+  ggplot2::labs(x="Ecological trait on island", color="Origin")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_fill_manual(values=colors)
+png("results/plot/h1/islpop_traitdist_baselined1.png",width=800,height = 800)
+print(hi.7bi)
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+# NUMBER OF INDIVIDUALS MAIN ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+nm <- ggplot2::ggplot(data = longtime, aes(x=time,y=nm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_line(data=baseline,aes(x=time,y=nm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=nm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=nm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=nm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=nm_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/nm.png",width=1400,height = 1400)
+print(nm)
+dev.off()
+nm <- ggplot2::ggplot(data = baseline, aes(x=time,y=nm_mean)) +
+  ggplot2::geom_line(aes(color="baseline")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/nm.png",width=1400,height = 1400)
+print(nm)
+dev.off()
+nm <- ggplot2::ggplot(data = longtime, aes(x=time,y=nm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/nm.png",width=1400,height = 1400)
+print(nm)
+dev.off()
+nm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=nm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/nm.png",width=1400,height = 1400)
+print(nm)
+dev.off()
+nm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=nm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/nm.png",width=1400,height = 1400)
+print(nm)
+dev.off()
+nm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=nm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/nm.png",width=1400,height = 1400)
+print(nm)
+dev.off()
+nm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=nm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/nm.png",width=1400,height = 1400)
+print(nm)
+dev.off()
+
+# NUMBER OF INDIVIDUALS isl ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+ni <- ggplot2::ggplot(data = longtime, aes(x=time,y=ni_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_line(data=baseline,aes(x=time,y=ni_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=ni_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=ni_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=ni_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=ni_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/ni.png",width=1400,height = 1400)
+print(ni)
+dev.off()
+ni <- ggplot2::ggplot(data = baseline, aes(x=time,y=ni_mean)) +
+  ggplot2::geom_line(aes(color="baseline")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind isl", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/ni.png",width=1400,height = 1400)
+print(ni)
+dev.off()
+ni <- ggplot2::ggplot(data = longtime, aes(x=time,y=ni_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind isl", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/ni.png",width=1400,height = 1400)
+print(ni)
+dev.off()
+ni <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=ni_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind isl", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/ni.png",width=1400,height = 1400)
+print(ni)
+dev.off()
+ni <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=ni_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind isl", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/ni.png",width=1400,height = 1400)
+print(ni)
+dev.off()
+ni <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=ni_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind isl", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/ni.png",width=1400,height = 1400)
+print(ni)
+dev.off()
+ni <- ggplot2::ggplot(data = bigpop, aes(x=time,y=ni_mean)) +
+  ggplot2::geom_line(aes(color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="Number of ind isl", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/ni.png",width=1400,height = 1400)
+print(ni)
+dev.off()
+
+# AVERAGE TRAIT MAIN ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9","nomig"="grey5")
+xm <- ggplot2::ggplot(data = longtime, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=nomig,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=xm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=xm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=xm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=xm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=xm_mean,color="bigpop")) +
+  ggplot2::geom_line(data=nomig,aes(x=time,y=xm_mean,color="nomig")) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/xm.png",width=1400,height = 1400)
+print(xm)
+dev.off()
+xm2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=nomig,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=xm_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=xm_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=xm_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=xm_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=xm_mean,color="bigpop"),size=1) +
+  ggplot2::geom_line(data=nomig,aes(x=time,y=xm_mean,color="nomig"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/xm2.png",width=1400,height = 1400)
+print(xm2)
+dev.off()
+xm <- ggplot2::ggplot(data = baseline, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/xm.png",width=1400,height = 1400)
+print(xm)
+dev.off()
+xm <- ggplot2::ggplot(data = longtime, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/xm.png",width=1400,height = 1400)
+print(xm)
+dev.off()
+xm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/xm.png",width=1400,height = 1400)
+print(xm)
+dev.off()
+xm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/xm.png",width=1400,height = 1400)
+print(xm)
+dev.off()
+xm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/xm.png",width=1400,height = 1400)
+print(xm)
+dev.off()
+xm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=xm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=xm_ciupp,ymin=xm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/xm.png",width=1400,height = 1400)
+print(xm)
+dev.off()
+
+# AVERAGE TRAIT ISL ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+xi <- ggplot2::ggplot(data = longtime, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=nomig,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=xi_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=xi_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=xi_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=xi_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=xi_mean,color="bigpop")) +
+  ggplot2::geom_line(data=nomig,aes(x=time,y=xi_mean,color="nomig")) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/xi.png",width=1400,height = 1400)
+print(xi)
+dev.off()
+xi2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=nomig,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=xi_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=xi_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=xi_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=xi_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=xi_mean,color="bigpop"),size=1) +
+  ggplot2::geom_line(data=nomig,aes(x=time,y=xi_mean,color="nomig"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/xi2.png",width=1400,height = 1400)
+print(xi2)
+dev.off()
+xi <- ggplot2::ggplot(data = baseline, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/xi.png",width=1400,height = 1400)
+print(xi)
+dev.off()
+xi <- ggplot2::ggplot(data = longtime, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/xi.png",width=1400,height = 1400)
+print(xi)
+dev.off()
+xi <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/xi.png",width=1400,height = 1400)
+print(xi)
+dev.off()
+xi <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/xi.png",width=1400,height = 1400)
+print(xi)
+dev.off()
+xi <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/xi.png",width=1400,height = 1400)
+print(xi)
+dev.off()
+xi <- ggplot2::ggplot(data = bigpop, aes(x=time,y=xi_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=xi_ciupp,ymin=xi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="Average ecological trait island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/xi.png",width=1400,height = 1400)
+print(xi)
+dev.off()
+
+
+
+
+# BIRTH MAIN ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+bm <- ggplot2::ggplot(data = longtime, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=bm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=bm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=bm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=bm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=bm_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/bm.png",width=1400,height = 1400)
+print(bm)
+dev.off()
+bm2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=bm_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=bm_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=bm_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=bm_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=bm_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/bm2.png",width=1400,height = 1400)
+print(bm2)
+dev.off()
+bm <- ggplot2::ggplot(data = baseline, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/bm.png",width=1400,height = 1400)
+print(bm)
+dev.off()
+bm <- ggplot2::ggplot(data = longtime, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/bm.png",width=1400,height = 1400)
+print(bm)
+dev.off()
+bm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/bm.png",width=1400,height = 1400)
+print(bm)
+dev.off()
+bm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/bm.png",width=1400,height = 1400)
+print(bm)
+dev.off()
+bm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/bm.png",width=1400,height = 1400)
+print(bm)
+dev.off()
+bm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=bm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=bm_ciupp,ymin=bm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth main", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/bm.png",width=1400,height = 1400)
+print(bm)
+dev.off()
+
+# BIRTH ISL ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+bi <- ggplot2::ggplot(data = longtime, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=bi_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=bi_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=bi_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=bi_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=bi_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/bi.png",width=1400,height = 1400)
+print(bi)
+dev.off()
+bi2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=bi_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=bi_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=bi_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=bi_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=bi_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/bi2.png",width=1400,height = 1400)
+print(bi2)
+dev.off()
+bi <- ggplot2::ggplot(data = baseline, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/bi.png",width=1400,height = 1400)
+print(bi)
+dev.off()
+bi <- ggplot2::ggplot(data = longtime, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/bi.png",width=1400,height = 1400)
+print(bi)
+dev.off()
+bi <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/bi.png",width=1400,height = 1400)
+print(bi)
+dev.off()
+bi <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/bi.png",width=1400,height = 1400)
+print(bi)
+dev.off()
+bi <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/bi.png",width=1400,height = 1400)
+print(bi)
+dev.off()
+bi <- ggplot2::ggplot(data = bigpop, aes(x=time,y=bi_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=bi_ciupp,ymin=bi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="birth island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/bi.png",width=1400,height = 1400)
+print(bi)
+dev.off()
+
+
+
+
+# MUTATION MAIN ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+mutm <- ggplot2::ggplot(data = longtime, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=mutm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=mutm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=mutm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=mutm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=mutm_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/mutm.png",width=1400,height = 1400)
+print(mutm)
+dev.off()
+mutm2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=mutm_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=mutm_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=mutm_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=mutm_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=mutm_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/mutm2.png",width=1400,height = 1400)
+print(mutm2)
+dev.off()
+mutm <- ggplot2::ggplot(data = baseline, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/mutm.png",width=1400,height = 1400)
+print(mutm)
+dev.off()
+mutm <- ggplot2::ggplot(data = longtime, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/mutm.png",width=1400,height = 1400)
+print(mutm)
+dev.off()
+mutm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/mutm.png",width=1400,height = 1400)
+print(mutm)
+dev.off()
+mutm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/mutm.png",width=1400,height = 1400)
+print(mutm)
+dev.off()
+mutm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/mutm.png",width=1400,height = 1400)
+print(mutm)
+dev.off()
+mutm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=mutm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=mutm_ciupp,ymin=mutm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/mutm.png",width=1400,height = 1400)
+print(mutm)
+dev.off()
+
+# MUTATION isl ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+muti <- ggplot2::ggplot(data = longtime, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=muti_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=muti_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=muti_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=muti_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=muti_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/muti.png",width=1400,height = 1400)
+print(muti)
+dev.off()
+muti2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=muti_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=muti_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=muti_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=muti_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=muti_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/muti2.png",width=1400,height = 1400)
+print(muti2)
+dev.off()
+muti <- ggplot2::ggplot(data = baseline, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/muti.png",width=1400,height = 1400)
+print(muti)
+dev.off()
+muti <- ggplot2::ggplot(data = longtime, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/muti.png",width=1400,height = 1400)
+print(muti)
+dev.off()
+muti <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/muti.png",width=1400,height = 1400)
+print(muti)
+dev.off()
+muti <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/muti.png",width=1400,height = 1400)
+print(muti)
+dev.off()
+muti <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/muti.png",width=1400,height = 1400)
+print(muti)
+dev.off()
+muti <- ggplot2::ggplot(data = bigpop, aes(x=time,y=muti_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=muti_ciupp,ymin=muti_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="mutation island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/muti.png",width=1400,height = 1400)
+print(muti)
+dev.off()
+
+# MIG MAIN ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+migm <- ggplot2::ggplot(data = longtime, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=migm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=migm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=migm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=migm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=migm_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/migm.png",width=1400,height = 1400)
+print(migm)
+dev.off()
+migm2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=migm_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=migm_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=migm_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=migm_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=migm_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/migm2.png",width=1400,height = 1400)
+print(migm2)
+dev.off()
+migm <- ggplot2::ggplot(data = baseline, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/migm.png",width=1400,height = 1400)
+print(migm)
+dev.off()
+migm <- ggplot2::ggplot(data = longtime, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/migm.png",width=1400,height = 1400)
+print(migm)
+dev.off()
+migm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/migm.png",width=1400,height = 1400)
+print(migm)
+dev.off()
+migm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/migm.png",width=1400,height = 1400)
+print(migm)
+dev.off()
+migm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/migm.png",width=1400,height = 1400)
+print(migm)
+dev.off()
+migm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=migm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=migm_ciupp,ymin=migm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/migm.png",width=1400,height = 1400)
+print(migm)
+dev.off()
+
+# MIGRATION ISL ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+migi <- ggplot2::ggplot(data = longtime, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=migi_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=migi_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=migi_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=migi_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=migi_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/migi.png",width=1400,height = 1400)
+print(migi)
+dev.off()
+migi2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=migi_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=migi_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=migi_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=migi_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=migi_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/migi2.png",width=1400,height = 1400)
+print(migi2)
+dev.off()
+migi <- ggplot2::ggplot(data = baseline, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/migi.png",width=1400,height = 1400)
+print(migi)
+dev.off()
+migi <- ggplot2::ggplot(data = longtime, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/migi.png",width=1400,height = 1400)
+print(migi)
+dev.off()
+migi <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/migi.png",width=1400,height = 1400)
+print(migi)
+dev.off()
+migi <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/migi.png",width=1400,height = 1400)
+print(migi)
+dev.off()
+migi <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/migi.png",width=1400,height = 1400)
+print(migi)
+dev.off()
+migi <- ggplot2::ggplot(data = bigpop, aes(x=time,y=migi_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=migi_ciupp,ymin=migi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="migration island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/migi.png",width=1400,height = 1400)
+print(migi)
+dev.off()
+
+
+
+# DEATH MAIN ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+dm <- ggplot2::ggplot(data = longtime, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=dm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=dm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=dm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=dm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=dm_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/dm.png",width=1400,height = 1400)
+print(dm)
+dev.off()
+dm2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=dm_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=dm_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=dm_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=dm_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=dm_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/dm2.png",width=1400,height = 1400)
+print(dm2)
+dev.off()
+dm <- ggplot2::ggplot(data = baseline, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/dm.png",width=1400,height = 1400)
+print(dm)
+dev.off()
+dm <- ggplot2::ggplot(data = longtime, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/dm.png",width=1400,height = 1400)
+print(dm)
+dev.off()
+dm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/dm.png",width=1400,height = 1400)
+print(dm)
+dev.off()
+dm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/dm.png",width=1400,height = 1400)
+print(dm)
+dev.off()
+dm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/dm.png",width=1400,height = 1400)
+print(dm)
+dev.off()
+dm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=dm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=dm_ciupp,ymin=dm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/dm.png",width=1400,height = 1400)
+print(dm)
+dev.off()
+
+
+# DEATH ISL ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+di <- ggplot2::ggplot(data = longtime, aes(x=time,y=di_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=di_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=di_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=di_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=di_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=di_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/di.png",width=1400,height = 1400)
+print(di)
+dev.off()
+di2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=di_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=di_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=di_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=di_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=di_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=di_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/di2.png",width=1400,height = 1400)
+print(di2)
+dev.off()
+di <- ggplot2::ggplot(data = baseline, aes(x=time,y=di_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/di.png",width=1400,height = 1400)
+print(di)
+dev.off()
+di <- ggplot2::ggplot(data = longtime, aes(x=time,y=di_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/di.png",width=1400,height = 1400)
+print(di)
+dev.off()
+di <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=di_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/di.png",width=1400,height = 1400)
+print(di)
+dev.off()
+di <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=di_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/di.png",width=1400,height = 1400)
+print(di)
+dev.off()
+di <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=di_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/di.png",width=1400,height = 1400)
+print(di)
+dev.off()
+di <- ggplot2::ggplot(data = bigpop, aes(x=time,y=di_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=di_ciupp,ymin=di_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="death island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/di.png",width=1400,height = 1400)
+print(di)
+dev.off()
+
+
+# SUCCESSFUL NATIVES MAIN ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+ebm <- ggplot2::ggplot(data = longtime, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=ebm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=ebm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=ebm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=ebm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=ebm_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/ebm.png",width=1400,height = 1400)
+print(ebm)
+dev.off()
+ebm2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=ebm_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=ebm_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=ebm_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=ebm_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=ebm_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/ebm2.png",width=1400,height = 1400)
+print(ebm2)
+dev.off()
+ebm <- ggplot2::ggplot(data = baseline, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/ebm.png",width=1400,height = 1400)
+print(ebm)
+dev.off()
+ebm <- ggplot2::ggplot(data = longtime, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/ebm.png",width=1400,height = 1400)
+print(ebm)
+dev.off()
+ebm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/ebm.png",width=1400,height = 1400)
+print(ebm)
+dev.off()
+ebm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/ebm.png",width=1400,height = 1400)
+print(ebm)
+dev.off()
+ebm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/ebm.png",width=1400,height = 1400)
+print(ebm)
+dev.off()
+ebm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=ebm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=ebm_ciupp,ymin=ebm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/ebm.png",width=1400,height = 1400)
+print(ebm)
+dev.off()
+
+# SUCCESSFUL NATIVES ISL ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+ebi <- ggplot2::ggplot(data = longtime, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=ebi_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=ebi_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=ebi_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=ebi_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=ebi_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/ebi.png",width=1400,height = 1400)
+print(ebi)
+dev.off()
+ebi2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=ebi_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=ebi_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=ebi_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=ebi_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=ebi_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/ebi2.png",width=1400,height = 1400)
+print(ebi2)
+dev.off()
+ebi <- ggplot2::ggplot(data = baseline, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/ebi.png",width=1400,height = 1400)
+print(ebi)
+dev.off()
+ebi <- ggplot2::ggplot(data = longtime, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/ebi.png",width=1400,height = 1400)
+print(ebi)
+dev.off()
+ebi <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/ebi.png",width=1400,height = 1400)
+print(ebi)
+dev.off()
+ebi <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/ebi.png",width=1400,height = 1400)
+print(ebi)
+dev.off()
+ebi <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/ebi.png",width=1400,height = 1400)
+print(ebi)
+dev.off()
+ebi <- ggplot2::ggplot(data = bigpop, aes(x=time,y=ebi_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=ebi_ciupp,ymin=ebi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful natives island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/ebi.png",width=1400,height = 1400)
+print(ebi)
+dev.off()
+
+# SUCCESSFUL MIGRATORS FROM MAINALND ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+emigm <- ggplot2::ggplot(data = longtime, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=emigm_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=emigm_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=emigm_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=emigm_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=emigm_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/emigm.png",width=1400,height = 1400)
+print(emigm)
+dev.off()
+emigm2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=emigm_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=emigm_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=emigm_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=emigm_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=emigm_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/emigm2.png",width=1400,height = 1400)
+print(emigm2)
+dev.off()
+emigm <- ggplot2::ggplot(data = baseline, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/emigm.png",width=1400,height = 1400)
+print(emigm)
+dev.off()
+emigm <- ggplot2::ggplot(data = longtime, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/emigm.png",width=1400,height = 1400)
+print(emigm)
+dev.off()
+emigm <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/emigm.png",width=1400,height = 1400)
+print(emigm)
+dev.off()
+emigm <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/emigm.png",width=1400,height = 1400)
+print(emigm)
+dev.off()
+emigm <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/emigm.png",width=1400,height = 1400)
+print(emigm)
+dev.off()
+emigm <- ggplot2::ggplot(data = bigpop, aes(x=time,y=emigm_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=emigm_ciupp,ymin=emigm_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="successful migrators from mainland", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/emigm.png",width=1400,height = 1400)
+print(emigm)
+dev.off()
+
+
+# SUCCESSFUL MIGRATORS FROM ISLAND ####
+colors <- c("baseline"="black","longtime"="#E69F00","diffopt2"="#0072B2","diffopt4"="#009E73","bigpop"="#CC79A7","diffopt0.5"="#56B4E9")
+emigi <- ggplot2::ggplot(data = longtime, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_line(aes(color="longtime")) +
+  ggplot2::geom_ribbon(aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=emigi_mean,color="baseline")) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=emigi_mean,color="diffopt2")) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=emigi_mean,color="diffopt4")) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=emigi_mean,color="diffopt0.5")) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=emigi_mean,color="bigpop")) +
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/emigi.png",width=1400,height = 1400)
+print(emigi)
+dev.off()
+emigi2 <- ggplot2::ggplot(data = longtime, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::geom_line(data=baseline,aes(x=time,y=emigi_mean,color="baseline"),size=1) +
+  ggplot2::geom_line(data=diffopt2,aes(x=time,y=emigi_mean,color="diffopt2"),size=1) +
+  ggplot2::geom_line(data=diffopt4,aes(x=time,y=emigi_mean,color="diffopt4"),size=1) +
+  ggplot2::geom_line(data=diffopt0.5,aes(x=time,y=emigi_mean,color="diffopt0.5"),size=1) +
+  ggplot2::geom_line(data=bigpop,aes(x=time,y=emigi_mean,color="bigpop"),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/comp/emigi2.png",width=1400,height = 1400)
+print(emigi2)
+dev.off()
+emigi <- ggplot2::ggplot(data = baseline, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_line(aes(color="baseline"),size=1) +
+  ggplot2::geom_ribbon(data=baseline,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/baseline/emigi.png",width=1400,height = 1400)
+print(emigi)
+dev.off()
+emigi <- ggplot2::ggplot(data = longtime, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_line(aes(color="longtime"),size=1) +
+  ggplot2::geom_ribbon(data=longtime,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/longtime/emigi.png",width=1400,height = 1400)
+print(emigi)
+dev.off()
+emigi <- ggplot2::ggplot(data = diffopt0.5, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt0.5"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt0.5,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt0.5/emigi.png",width=1400,height = 1400)
+print(emigi)
+dev.off()
+emigi <- ggplot2::ggplot(data = diffopt2, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt2"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt2,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt2/emigi.png",width=1400,height = 1400)
+print(emigi)
+dev.off()
+emigi <- ggplot2::ggplot(data = diffopt4, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_line(aes(color="diffopt4"),size=1) +
+  ggplot2::geom_ribbon(data=diffopt4,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/diffopt4/emigi.png",width=1400,height = 1400)
+print(emigi)
+dev.off()
+emigi <- ggplot2::ggplot(data = bigpop, aes(x=time,y=emigi_mean)) +
+  ggplot2::geom_line(aes(color="bigpop"),size=1) +
+  ggplot2::geom_ribbon(data=bigpop,aes(x=time,ymax=emigi_ciupp,ymin=emigi_cidown),fill="grey2",alpha=0.1)+
+  ggplot2::labs(x="Time (in generation)", y="sucessful migrators from island", color="model")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) +
+  ggplot2::scale_color_manual(values=colors)
+png("results/plot/bigpop/emigi.png",width=1400,height = 1400)
+print(emigi)
+dev.off()
+
+# POP INIT ####
+popinit<- ggplot2::ggplot(data = baseline.popinit, aes(x=x,group=as.factor(loc)) )+
+  ggplot2::geom_histogram(aes(x=x,fill=as.factor(loc)),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="trait", color="Location")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) 
+png("results/plot/baseline/popinit.png",width=1400,height = 1400)
+print(popinit)
+dev.off()
+popinit <- ggplot2::ggplot(data = longtime.popinit, aes(x=x,group=as.factor(loc)) )+
+  ggplot2::geom_histogram(aes(x=x,fill=as.factor(loc)),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="trait", color="Location")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) 
+png("results/plot/longtime/popinit.png",width=1400,height = 1400)
+print(popinit)
+dev.off()
+popinit <- ggplot2::ggplot(data = diffopt0.5.popinit, aes(x=x,group=as.factor(loc)) )+
+  ggplot2::geom_histogram(aes(x=x,fill=as.factor(loc)),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="trait", color="Location")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) 
+png("results/plot/diffopt0.5/popinit.png",width=1400,height = 1400)
+print(popinit)
+dev.off()
+popinit <- ggplot2::ggplot(data = diffopt2.popinit, aes(x=x,group=as.factor(loc)) )+
+  ggplot2::geom_histogram(aes(x=x,fill=as.factor(loc)),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="trait", color="Location")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) 
+png("results/plot/diffopt2/popinit.png",width=1400,height = 1400)
+print(popinit)
+dev.off()
+popinit <- ggplot2::ggplot(data = diffopt4.popinit, aes(x=x,group=as.factor(loc)) )+
+  ggplot2::geom_histogram(aes(x=x,fill=as.factor(loc)),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="trait", color="Location")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) 
+png("results/plot/diffopt4/popinit.png",width=1400,height = 1400)
+print(popinit)
+dev.off()
+popinit <- ggplot2::ggplot(data = bigpop.popinit, aes(x=x,group=as.factor(loc)) )+
+  ggplot2::geom_histogram(aes(x=x,fill=as.factor(loc)),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="trait", color="Location")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) 
+png("results/plot/bigpop/popinit.png",width=1400,height = 1400)
+print(popinit)
+dev.off()
+
+# POP MID SIM ####
+popmid<- ggplot2::ggplot(data = baseline.popmid, aes(x=x,group=as.factor(loc)) )+
+  ggplot2::geom_histogram(aes(x=x,fill=as.factor(loc)),size=1) +
+  ggplot2::labs(x="Time (in generation)", y="trait", color="Location")+
+  ggplot2::theme(legend.position = "top",text = element_text(size = 35),panel.background = element_rect(fill = "white", colour = "black")) 
+png("results/plot/baseline/popmid.png",width=1400,height = 1400)
+print(popmid)
+dev.off()
+
+

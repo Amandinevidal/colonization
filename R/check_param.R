@@ -21,7 +21,7 @@ warning <- function(w) {
 
 #### PARAMETERS SET ####
 write("Parameter check", log.path, append=TRUE)
-if(length(list.files(path="results/",pattern=sim))!=0){w<-"Simulation name already existing, results will be overwritten";warning(w)}
+if(length(list.files(path="results/",pattern=paste0("results/",sim,"_results.txt")))!=0){w<-"Simulation name already existing, results will be overwritten";warning(w)}
 if(nsim<=0) {stop("Error: Number of replicates, nsim, equal to or less than 0")}
 if(time<=0) {stop("Error: Simulation time, time, equal to or less than 0")}
 if(k<=0) {stop("Error: Empty mainland")}

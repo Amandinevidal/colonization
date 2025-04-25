@@ -12,18 +12,23 @@
 rm(list = ls())                                                                               # clear environment
 library(tidyverse)                                                                            # needed package
 source("R/functions.R")                                                                       # import functions
-source("R/parameters.R")                                                                      # import parameters
+source("R/parameters.R") 
+
+set.seed(seed)
+
+# import parameters
 if (!dir.exists(paste0("results"))) {dir.create("results")}                                   # create results file if not existing
 file.create(paste0("results/",sim,"_log.txt"))                                                # create simulation log file
 source("R/check_param.R")                                                                     # check parameters consistency
 start <- Sys.time()                                                                           # save simulation starting time
 write(paste(sim,"- starting",date(),sep=" "),file=paste0("results/",sim,"_log.txt"))          # save starting time
-set.seed(seed)                                                                                # set seed
-write(paste("Simulation seed:",seed),file=paste0("results/",sim,"_log.txt"),append=T)         # save simulation seed
 write(paste(readLines("R/parameters.R",warn=FALSE)),file=paste0("results/",sim,"_log.txt"),append = T)
+write(paste("Simulation seed:",seed),file=paste0("results/",sim,"_log.txt"),append=T)         # save simulation seed
 
 #### Simulations set ####
 for(run in 3:nsim){
+  
+  set.seed(seed)
   
   #### Files initialization for replicate ####
   file.create(paste0("results/",sim,"_",run,"_results.txt")) # Table that save all individuals existing in the system at each time step: i (individual id), x (ecological trait), fit (fitness value according the the individual location), origin (where the individual is born), loc (individual's location), mother (individual that gave birth to the focused one), off (number of offpsring given by the focused individual at this time step), mig (did this individual migrate at this time step, if 0 no, if 1 yes), time (current time)
@@ -49,6 +54,7 @@ for(run in 3:nsim){
     curr_main$time <- t                       # set current time into mainland pop table
     curr_isl$time <- t                        # set current time into island pop table
     pnm <- nrow(curr_main)                    # save the number of individuals on mainland before all events
+    
     prpm <- max(curr_main$x)-min(curr_main$x) # range of the current trait distribution of the mainland population
     pni <- nrow(curr_isl)                     # save the number of individuals on island before all events
     prpi <- max(curr_isl$x)-min(curr_isl$x)   # range of the current trait distribution of the island population
@@ -60,6 +66,16 @@ for(run in 3:nsim){
     # Birth event 
     off_main <- birth_event_main(curr_main,ktot,t) # birth event on mainland
     ktot <- ktot + nrow(off_main)                  # update total number of individuals
+    
+    cat ("TEST NUMBER OF OFFPSRING")
+    
+    for (ind in unique(curr_main$i)){
+      subset <- curr_main[which(curr_main$i == ind),]
+      offspring <- sum(subset$off)
+      descendants <- length(which(off_main$mother==ind))
+      if(descendants != offspring) {cat("TIME",t,"ERROR with mother:", ind, "\n")}
+    }
+    
     off_isl <- birth_event_isl(curr_isl,ktot,t)    # birth event on island
     ktot <- ktot + nrow(off_isl)                   # update total number of individuals
     bm <- nrow(off_main)                           # save total number of birth events on mainland 
