@@ -86,30 +86,7 @@ search_ancestor <- function(id,phylo) {
   }
   return(new_id)
 }
-search_ancestor_colonist <- function(id,phylo,colonist) {
-  if(phylo[which(phylo$species == id),]$location == 0) { # the individual is on the mainland - no colonization event
-    
-  }
-  col <- ifelse(id %in% colonist$species, TRUE, FALSE)   # is the individual a colonist ?
-  if (col) { # the individual is the ancestor colonist of its own lineage
-    return(id)
-  } else { # find the colonist ancestor
-    ancestors <- c()
-    mother <- phylo[which(phylo$species == id),]$mother
-    ancestors <- c(ancestors,mother)
-    while (mother != 0) {
-      new_id <- mother
-      mother <- phylo[which(phylo$species == new_id),]$mother
-      ancestors <- c(ancestors,mother)
-    }
-    if(any(ancestors %in% colonist)) {
-      ancestor_colonist <- intersect(ancestors,colonist)
-    } else {
-      ancestor_colonist <- NA
-    }
-    return(ancestor_colonist) 
-  }
-}
+
 search_trait <- function(ind,data,time){
   line <- data[which(data$id == ind & data$time == time),]
   if(nrow(line) == 0) { # individual died at this time, search before
@@ -135,6 +112,46 @@ get_fitness <- function(x, opt, wmax, sigma) {
   f <- wmax * exp( - ((x - opt)^2 / sigma^2))
   return(f)
 } 
+search_col_id <- function(id,phylo,colonist) {
+  if(phylo[which(phylo$id == id),]$location == 1) { # the individual is on the mainland - no colonization event
+    col <- ifelse(id %in% colonist_data$colonist, TRUE, FALSE)   # is the individual a colonist ?
+    if (col) { # the individual is the ancestor colonist of its own lineage
+      colonization_id <- colonist_data[which(colonist_data$colonist == id),]$colonization_id
+    } else { # find the colonist ancestor
+      ancestors <- c()
+      mother <- phylo[which(phylo$id == id),]$mother
+      ancestors <- c(ancestors,mother)
+      while (mother != 0) {
+        new_id <- mother
+        mother <- phylo[which(phylo$id == new_id),]$mother
+        ancestors <- c(ancestors,mother)
+      }
+      if(any(ancestors %in% colonist_data$colonist)) {
+        ancestor_colonist <- intersect(ancestors,colonist_data$colonist)
+        colonization_id <- colonist_data[which(colonist_data$colonist == ancestor_colonist),]$colonization_id
+      } else {
+        colonization_id <- 0
+      }
+    }
+  } else {
+    colonization_id <- NA
+  }
+  return(colonization_id) 
+}
+nb_generation <- function(colonization) {
+  time1 <- colonist_data[which(colonist_data$colonization_id == colonization),]$time
+  des <- phylo[which(phylo$colonization_id == colonization),]
+  time2 <- max(des$death)
+  return(time2 - time1)
+}
+
+average_x <- function(colonization) {
+  des <- phylo[which(phylo$colonization_id == colonization),]
+  subset_data <- data %>%
+    filter(id %in% des$id)
+  m <- mean(subset_data$x)
+  return(m)
+}
 
 #### Data ####
 
@@ -209,4 +226,24 @@ colonist_data <- colonist_data %>%
 colonist_data <- colonist_data %>%
   rowwise() %>%
   mutate(ancestor_fit_main = get_fitness(ancestor_x,opt_main,wmax,sigma)) 
+
+# Variable: nb_des
+# Étape 1 : Calculer le nombre d'espèces par colonization_id dans phylo
+result <- phylo %>%
+  group_by(colonization_id) %>%
+  summarise(nb_des = n())
+#### VERIFIER LENOMBRE D'INDIVIDUS MAYBE ???????
+# Étape 2 : Faire la jointure entre colonist_data et result en utilisant colonization_id
+colonist_data <- colonist_data %>%
+  left_join(result, by = "colonization_id")
+
+# Variable: nb gen
+colonist_data <-colonist_data %>%
+  rowwise() %>%
+  mutate(nb_gen = nb_generation(colonization_id))
+
+# Variable: average_x
+colonist_data <- colonist_data %>%
+  rowwise() %>%
+  mutate(average_x = average_x(colonization_id))
 
