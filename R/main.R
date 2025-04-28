@@ -10,17 +10,26 @@
 
 #### Files initialization / Library / environment ####
 rm(list = ls())                                                                               # clear environment
+
 library(tidyverse)                                                                            # needed package
 source("R/functions.R")                                                                       # import functions
 source("R/parameters.R")                                                                      # import parameters
+
 if (!dir.exists(paste0("results"))) {dir.create("results")}                                   # create results file if not existing
 file.create(paste0("results/",sim,"_log.txt"))                                                # create simulation log file
 source("R/check_param.R")                                                                     # check parameters consistency
 start <- Sys.time()                                                                           # save simulation starting time
 write(paste(sim,"- starting",date(),sep=" "),file=paste0("results/",sim,"_log.txt"))          # save starting time
-set.seed(seed)                                                                                # set seed
-write(paste("Simulation seed:",seed),file=paste0("results/",sim,"_log.txt"),append=T)         # save simulation seed
 write(paste(readLines("R/parameters.R",warn=FALSE)),file=paste0("results/",sim,"_log.txt"),append = T)
+
+#### Reproductibility ####
+
+# Set the random number generator to ensure strict reproducibility
+RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion")
+set.seed(seed)
+# Save this information to log file
+write(paste("\nReproductibility information: \n Seed:",seed,"\n Rversion:",R.version.string), file=paste0("results/",sim,"_log.txt"),append=T)
+write(paste("RNG_kind:",RNGkind()), file=paste0("results/",sim,"_log.txt"),append=T)
 
 #### Simulations set ####
 for(run in 1:nsim){

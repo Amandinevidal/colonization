@@ -135,7 +135,7 @@ get_fitness <- function(x, opt, wmax, sigma) {
 
 #### Data ####
 
-sim <- 'sim1'
+sim <- 'test'
 nsim <- 1
 
 # parameters
@@ -199,4 +199,19 @@ colonist_data <- colonist_data %>%
   mutate(ancestor_x = search_trait(ancestor,data,time))
 
 
+#### CHECK PROBLEME NB OF OFFSPRINGS ####
 
+for (i in phylo$id) {
+  line <- which(phylo$id == i)
+  mother <- phylo[line,]$mother
+  if(mother != 0) {
+    subset <- data[which(data$id == mother),]
+    offspring_sum <- sum(subset$offspring)
+    offspring_verify <- unique(data[which(data$mother == mother),]$id)
+    if(offspring_sum < length(offspring_verify)) {cat("ERROR: spp",i," mother:",mother, "\n")}
+  }
+}
+
+i <- 5538
+
+subset <- data[which(data$id == )]
