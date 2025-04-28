@@ -112,6 +112,9 @@ search_ancestor_colonist <- function(id,phylo,colonist) {
 }
 search_trait <- function(ind,data,time){
   line <- data[which(data$id == ind & data$time == time),]
+  if(nrow(line) == 0) { # individual died at this time, search before
+    line <- data[which(data$id == ind & data$time == time - 1),]
+  }
   return(line$x)
 }
 read_parameters <- function(sim_id) {
@@ -149,7 +152,7 @@ data <- data %>% # add death and birth variables
   group_by(id) %>%
   mutate(
     birth = min(time[age == 0], na.rm = TRUE),
-    death = max(time, na.rm = TRUE)
+    death = max(time +1 , na.rm = TRUE) # careful, death time is not the last we observe in table data, it is this time + 1 
   ) %>%
   ungroup()
 
@@ -190,28 +193,20 @@ colonist_data <- colonist_data %>%
   mutate(colonist_fit_main = get_fitness(colonist_x,opt_main,wmax,sigma)) 
 
 # Variables: ancestor
-colonist_data <- left_join(colonist_data, phylo, by = c("colonist" = "id")) %>%
+colonist_data <- left_join(
+  colonist_data,
+  phylo %>% select(id, mother),  # <-- select only "id" and "mother"
+  by = c("colonist" = "id")
+) %>%
   rename(ancestor = mother)
 
-# Variable: acestor_x
+# Variable: ancestor_x
 colonist_data <- colonist_data %>%
   rowwise() %>%
   mutate(ancestor_x = search_trait(ancestor,data,time))
 
+# variable: ancestor_fit_main
+colonist_data <- colonist_data %>%
+  rowwise() %>%
+  mutate(ancestor_fit_main = get_fitness(ancestor_x,opt_main,wmax,sigma)) 
 
-#### CHECK PROBLEME NB OF OFFSPRINGS ####
-
-for (i in phylo$id) {
-  line <- which(phylo$id == i)
-  mother <- phylo[line,]$mother
-  if(mother != 0) {
-    subset <- data[which(data$id == mother),]
-    offspring_sum <- sum(subset$offspring)
-    offspring_verify <- unique(data[which(data$mother == mother),]$id)
-    if(offspring_sum < length(offspring_verify)) {cat("ERROR: spp",i," mother:",mother, "\n")}
-  }
-}
-
-i <- 5538
-
-subset <- data[which(data$id == )]
