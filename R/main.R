@@ -139,7 +139,6 @@ for(run in 1:nsim){
     # Remove
     rm(off_main,off_isl,comp_main,comp_isl,summ,pop)
           
-    if(t%%10){cat("Time",t,"ok")}
   }
   
   print(paste("RUN",run,"ok"))
