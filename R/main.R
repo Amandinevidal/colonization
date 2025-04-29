@@ -16,12 +16,12 @@ source("R/functions.R")                                                         
 source("R/parameters.R")                                                                      # import parameters
 
 if (!dir.exists(paste0("results"))) {dir.create("results")}                                   # create results file if not existing
-if (!dir.exists(paste0(sim))) {}
-file.create(paste0("results/",sim,"_log.txt"))                                                # create simulation log file
+if (!dir.exists(paste0("results/",sim))) {dir.create(paste0("results/",sim))}
+file.create(paste0("results/",sim,"/",sim,"_log.txt"))                                                # create simulation log file
 source("R/check_param.R")                                                                     # check parameters consistency
 start <- Sys.time()                                                                           # save simulation starting time
-write(paste(sim,"- starting",date(),sep=" "),file=paste0("results/",sim,"_log.txt"))          # save starting time
-write(paste(readLines("R/parameters.R",warn=FALSE)),file=paste0("results/",sim,"_log.txt"),append = T)
+write(paste(sim,"- starting",date(),sep=" "),file=paste0("results/",sim,"/",sim,"_log.txt"))          # save starting time
+write(paste(readLines("R/parameters.R",warn=FALSE)),file=paste0("results/",sim,"/",sim,"_log.txt"),append = T)
 
 #### Reproductibility ####
 
@@ -29,26 +29,26 @@ write(paste(readLines("R/parameters.R",warn=FALSE)),file=paste0("results/",sim,"
 RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion")
 set.seed(seed)
 # Save this information to log file
-write(paste("\nReproductibility information: \n Seed:",seed,"\n Rversion:",R.version.string), file=paste0("results/",sim,"_log.txt"),append=T)
-write(paste("RNG_kind:",RNGkind()), file=paste0("results/",sim,"_log.txt"),append=T)
+write(paste("\nReproductibility information: \n Seed:",seed,"\n Rversion:",R.version.string), file=paste0("results/",sim,"/",sim,"_log.txt"),append=T)
+write(paste("RNG_kind:",RNGkind()), file=paste0("results/",sim,"/",sim,"_log.txt"),append=T)
 
 #### Simulations set ####
 for(run in 1:nsim){
   
   #### Files initialization for replicate ####
-  file.create(paste0("results/",sim,"_",run,"_results.txt")) # Table that save all individuals existing in the system at each time step: i (individual id), x (ecological trait), fit (fitness value according the the individual location), origin (where the individual is born), loc (individual's location), mother (individual that gave birth to the focused one), off (number of offpsring given by the focused individual at this time step), mig (did this individual migrate at this time step, if 0 no, if 1 yes), time (current time)
-  file.create(paste0("results/",sim,"_",run,"_summary.txt")) # Table that save at each time step :t (time), nm (number of ind on mainland), ni (number of ind on island), xm (ecological trait mean of all individuals on mainalnd), xi (ecological trait mean of all individuals on island), nbm (number of birth on mainland), nbi (number of birth on island), nmutm (number of mutation on mainland), nmuti (number of mutation on island), nmigm (number of migration from mainland), nmigi (number of migration from island), ndm (number od death on mainland), ndi (number of death on island), nmcompm (number of successful competitors on mainland from mainland), nmcompi (number of successful competitors on mainland from island) nicompi (number of successful competitors on island from island), nicompm (successful competitors on island from mainland)
+  file.create(paste0("results/",sim,"/",sim,"_",run,"_results.txt")) # Table that save all individuals existing in the system at each time step: i (individual id), x (ecological trait), fit (fitness value according the the individual location), origin (where the individual is born), loc (individual's location), mother (individual that gave birth to the focused one), off (number of offpsring given by the focused individual at this time step), mig (did this individual migrate at this time step, if 0 no, if 1 yes), time (current time)
+  file.create(paste0("results/",sim,"/",sim,"_",run,"_summary.txt")) # Table that save at each time step :t (time), nm (number of ind on mainland), ni (number of ind on island), xm (ecological trait mean of all individuals on mainalnd), xi (ecological trait mean of all individuals on island), nbm (number of birth on mainland), nbi (number of birth on island), nmutm (number of mutation on mainland), nmuti (number of mutation on island), nmigm (number of migration from mainland), nmigi (number of migration from island), ndm (number od death on mainland), ndi (number of death on island), nmcompm (number of successful competitors on mainland from mainland), nmcompi (number of successful competitors on mainland from island) nicompi (number of successful competitors on island from island), nicompm (successful competitors on island from mainland)
   
   # Table that save at each time step :t (time), nm (number of ind on mainland), ni (number of ind on island), xm (ecological trait mean of all individuals on mainalnd), xi (ecological trait mean of all individuals on island), bm (number of birth on mainland), bi (number of birth on island), mutm (number of mutation on mainland), muti (number of mutation on island), migm (number of migration from mainland), migi (number of migration from island), dm (number od death on mainland), di (number of death on island), ebm (number of successful competitors on mainland from mainland), ebi (number of successful competitors on island from island), emigi (number of successful competitors on mainland from island), emigm (successful competitors on island from mainland)
   
-  if(!file.exists(paste0("results/",sim,"_",run,"_results.txt"))){warning("ERROR with results.txt: not existing")}
-  if(!file.exists(paste0("results/",sim,"_",run,"_summary.txt"))){warning("ERROR with summary.txt: not existing")}
+  if(!file.exists(paste0("results/",sim,"/",sim,"_",run,"_results.txt"))){warning("ERROR with results.txt: not existing")}
+  if(!file.exists(paste0("results/",sim,"/",sim,"_",run,"_summary.txt"))){warning("ERROR with summary.txt: not existing")}
 
     #### Simulation initialization ####
   pop_init(k,ipk,dopt,wopt,sigma,wmax)              # mainland and island population tibble initialization
   pop <- as.matrix(rbind(curr_main,curr_isl))  # total pop
   ktot <- nrow(pop)                            # total number of individuals
-  write.table(pop,file=paste0("results/",sim,"_",run,"_results.txt"),append = T,col.names =F) # save total pop
+  write.table(pop,file=paste0("results/",sim,"/",sim,"_",run,"_results.txt"),append = T,col.names =F) # save total pop
   
   if(ktot!=sum(k+k*ipk)){write("Ktot different from population number of rows.", log.path, append=TRUE)}
   
@@ -131,11 +131,11 @@ for(run in 1:nsim){
     # cat("nm:",pnm,"dm:",dm,"bm:",ebm,"mi:",emigi,"SHOULD",pnm-dm+ebm+emigi,"IS",nm,"\t","ni:",pni,"di:",di,"bi:",ebi,"mm:",emigm,"SHOULD",pni-di+ebi+emigm,"IS",ni)
     
     # Save new population
-    write.table(pop,file=paste0("results/",sim,"_",run,"_results.txt"),append = T,col.names =F)
+    write.table(pop,file=paste0("results/",sim,"/",sim,"_",run,"_results.txt"),append = T,col.names =F)
     
     # Save metrics summary
     summ <- matrix(c(t,nm,ni,xm,xi,bm,bi,mutm,muti,migm,migi,dm,di,ebm,ebi,emigm,emigi,prpm,prpi,prom,proi,prmm,prmi,prcm,prci),nrow=1,ncol=25)
-    write.table(summ,file=paste0("results/",sim,"_",run,"_summary.txt"),append = T,sep=" ",col.names = F)
+    write.table(summ,file=paste0("results/",sim,"/",sim,"_",run,"_summary.txt"),append = T,sep=" ",col.names = F)
     
     # Remove
     rm(off_main,off_isl,comp_main,comp_isl,summ,pop)
@@ -146,5 +146,11 @@ for(run in 1:nsim){
 }
 
 # Last info about simulation
-write(paste(sim,"- end, simulation time:",Sys.time()-start,sep=" "),file=paste0("results/",sim,"_log.txt"),append = T)
+write(paste(sim,"- end, simulation time:",Sys.time()-start,sep=" "),file=paste0("results/",sim,"/",sim,"_log.txt"),append = T)
 
+# Compress files 
+folder_path <- paste0("results/", sim)
+tar_command <- paste("tar -czf", paste0(folder_path, ".tar.gz"), "-C", "results", sim)
+system(tar_command)
+cat("The folder", folder_path, "has been successfully compressed into", paste0(folder_path, ".tar.gz"), "\n")
+unlink(paste0("results/", sim), recursive = TRUE)
