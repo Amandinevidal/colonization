@@ -16,6 +16,7 @@ source("R/functions.R")                                                         
 source("R/parameters.R")                                                                      # import parameters
 
 if (!dir.exists(paste0("results"))) {dir.create("results")}                                   # create results file if not existing
+if (!dir.exists(paste0(sim))) {}
 file.create(paste0("results/",sim,"_log.txt"))                                                # create simulation log file
 source("R/check_param.R")                                                                     # check parameters consistency
 start <- Sys.time()                                                                           # save simulation starting time

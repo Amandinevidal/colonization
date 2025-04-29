@@ -12,7 +12,7 @@
 
 #### Functions ####
 
-log.path <- paste0("results/",sim,"_log.txt")
+log.path <- paste0("results/",sim,"/",sim,"_log.txt")
 warning <- function(w) {
   cat("Warning!", w, '\n')
   cont <- readline('Do you wish to continue? [Y/N] ')

@@ -1,4 +1,3 @@
-
 sim <- "A"            # name your simulation
 nsim <- 30            # number of replicates
 time <- 1000          # simulation time

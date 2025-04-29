@@ -12,7 +12,7 @@ get_fitness <- function(x, opt, wmax, sigma) {
   wmax * exp(- ((x - opt)^2 / sigma^2))
 }
 
-t_x <- max_dopt/2        # Trait distance at which fitness = t_f
+t_x <- max_dopt/2-1      # Trait distance at which fitness = t_f
 t_f <- 0.5               # Fitness value at distance t_x
 sigma <- t_x / sqrt(-log(t_f))
 wmax <- 1
@@ -43,3 +43,4 @@ legend("topright",
        legend = c("Trait density", "Individual fitness", "Optimum", paste("±", t_x)),
        col = c("red", "blue", "darkgreen", "orange"),
        lty = c(1, NA, 2, 2), pch = c(NA, 16, NA, NA), lwd = c(2, NA, 1, 1))
+
