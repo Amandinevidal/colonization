@@ -1,12 +1,5 @@
-#### -----------------------------------------------------------------####
-#### Author : Amandine Vidal-Hosteng
-#### Encoding : UTF-8
-#### Email : a.y.vidal-hosteng@rug.nl
-#### File path : colonization/main.R
-#### 
-#### Main file: contains the R code for the individual based model and
-#### run a simulation
-#### -----------------------------------------------------------------####
+library(doParallel)
+library(foreach)
 
 #### Files initialization / Library / environment ####
 rm(list = ls())                                                                               # clear environment
@@ -24,7 +17,6 @@ write(paste(sim,"- starting",date(),sep=" "),file=paste0("results/",sim,"/",sim,
 write(paste(readLines("R/parameters.R",warn=FALSE)),file=paste0("results/",sim,"/",sim,"_log.txt"),append = T)
 
 #### Reproductibility ####
-
 # Set the random number generator to ensure strict reproducibility
 RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion")
 set.seed(seed)
@@ -32,8 +24,12 @@ set.seed(seed)
 write(paste("\nReproductibility information: \n Seed:",seed,"\n Rversion:",R.version.string), file=paste0("results/",sim,"/",sim,"_log.txt"),append=T)
 write(paste("RNG_kind:",RNGkind()), file=paste0("results/",sim,"/",sim,"_log.txt"),append=T)
 
-#### Simulations set ####
-for(run in 1:nsim){
+#### Setup parallel backend ####
+ncores <- detectCores() -10 
+cl <- makeCluster(ncores)
+registerDoParallel(cl)
+
+foreach(run = 1:nsim, .packages = c("tidyverse"), .export = ls()) %dopar% {
   
   set.seed(seed + run)
   
@@ -45,8 +41,8 @@ for(run in 1:nsim){
   
   if(!file.exists(paste0("results/",sim,"/",sim,"_",run,"_results.txt"))){warning("ERROR with results.txt: not existing")}
   if(!file.exists(paste0("results/",sim,"/",sim,"_",run,"_summary.txt"))){warning("ERROR with summary.txt: not existing")}
-
-    #### Simulation initialization ####
+  
+  #### Simulation initialization ####
   pop_init(k,ipk,dopt,wopt,sigma,wmax)              # mainland and island population tibble initialization
   pop <- as.matrix(rbind(curr_main,curr_isl))  # total pop
   ktot <- nrow(pop)                            # total number of individuals
@@ -55,7 +51,7 @@ for(run in 1:nsim){
   if(ktot!=sum(k+k*ipk)){write("Ktot different from population number of rows.", log.path, append=TRUE)}
   
   #### Simulation ####
-  for (t in 1:time){ # TIME loop
+  for (t in 1:time){ # Begining Loop time
     
     # set time
     curr_main$time <- t                       # set current time into mainland pop table
@@ -92,7 +88,7 @@ for(run in 1:nsim){
     migi <- length(which(off_isl[,8]==1))                                 # save total number of migration events on island
     prmm <- max(subset(off_main,loc==1)$x)-min(subset(off_main,loc==1)$x) # phenotypic range of the migrating pool from the mainland to the island
     prmi <- max(subset(off_isl,loc==0)$x)-min(subset(off_isl,loc==0)$x)   # phenotypic range of the migrating pool from the island to the mainland
-
+    
     # Local fitness calculation
     for(ind in 1:nrow(off_main)){
       off_main$fit[ind] <- get_fitness(off_main$x[ind],ifelse(off_main$loc[ind]==0,0,dopt),wmax,sigma)
@@ -141,11 +137,15 @@ for(run in 1:nsim){
     
     # Remove
     rm(off_main,off_isl,comp_main,comp_isl,summ,pop)
-          
-  }
+    
+  } # END Loop time 
   
   print(paste("RUN",run,"ok"))
+  
+  # Le reste de ton code inchangé...
 }
+
+stopCluster(cl)
 
 # Last info about simulation
 write(paste(sim,"- end, simulation time:",Sys.time()-start,sep=" "),file=paste0("results/",sim,"/",sim,"_log.txt"),append = T)
@@ -156,3 +156,4 @@ tar_command <- paste("tar -czf", paste0(folder_path, ".tar.gz"), "-C", "results"
 system(tar_command)
 cat("The folder", folder_path, "has been successfully compressed into", paste0(folder_path, ".tar.gz"), "\n")
 unlink(paste0("results/", sim), recursive = TRUE)
+
