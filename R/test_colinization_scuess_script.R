@@ -28,8 +28,7 @@ rm(list = ls())
 library(dplyr)
 library(ggplot2)
 library(data.table)
-library(future.apply)
-library(future)
+library(igraph)
 
 #### Functions ####
 extract_log_file <- function(data_files) {
@@ -90,26 +89,6 @@ get_fitness <- function(x, opt, wmax, sigma) {
   f <- wmax * exp( - ((x - opt)^2 / sigma^2))
   return(f)
 } 
-get_colonization_id <- function(spp, location, phylo_dt, colonist_dt) {
-  # if mainland indiviudal no colonization event
-  if (location == 0) return(NA) 
-  # if insular individual search all ancestors
-  ancestors <- c(spp) 
-  m <- phylo_dt[id == spp, mother]
-  ancestors <- c(ancestors, m)
-  while (m != 0) {
-    m <- phylo_dt[id == m, mother]
-    ancestors <- c(ancestors, m)
-  }
-  # is there a colonist in the ancestors
-  matching <- colonist_dt[colonist %in% ancestors]
-  if (nrow(matching) > 0) {
-    first_match <- matching[match(colonist, matching$colonist, nomatch = 0)[1], ]
-    return(first_match$colonization_id)
-  } else {
-    return(as.numeric(0))
-  }
-}
 nb_generation <- function(colonization) {
   time1 <- colonist_data[which(colonist_data$colonization_id == colonization),]$time
   des <- phylo[which(phylo$colonization_id == colonization),]
@@ -122,6 +101,33 @@ average_x <- function(colonization) {
     filter(id %in% des$id)
   m <- mean(subset_data$x)
   return(m)
+}
+get_descendant_stats <- function(ind, g, phylo_dt, data_dt, colonist_dt) {
+  # Récupérer tous les descendants du colonist dans le graphe
+  all_nodes <- subcomponent(g, v = as.character(ind), mode = "out")
+  descendants <- setdiff(as.integer(V(g)[all_nodes]$name), ind)  # sans lui-même
+  
+  nb_des <- length(descendants)
+  
+  # Si pas de descendants, renvoyer NA
+  if (nb_des == 0) {
+    return(list(nb_des = 0, p_des = NA, av_x = NA))
+  }
+  
+  # Colonization time
+  colonization_time <- colonist_dt[colonist == ind, time]
+  
+  # Persistance (temps depuis extinction du dernier descendant)
+  filtered_phylo <- phylo_dt[id %in% c(descendants,ind)]
+  extinction_time <- max(filtered_phylo$death, na.rm = TRUE)
+  p_des <- abs(colonization_time - extinction_time)
+  
+  # Moyenne du trait au premier passage de chaque descendant
+  filtered_data <- data_dt[id %in% descendants]
+  filtered_data <- filtered_data[, .SD[which.min(time)], by = id]
+  av_x <- mean(filtered_data$x, na.rm = TRUE)
+  
+  return(list(nb_des = nb_des, p_des = p_des, av_x = av_x))
 }
 
 #### Code ####
@@ -156,6 +162,7 @@ for (tar_file in tar_files) { # Loop over simulations
   
   for (i in seq_len(nsim)) {  # Loop over replicates
     
+    i <- 1
     file <- results_files[[i]]
     if (!is.null(file)) {
       
@@ -199,6 +206,8 @@ for (tar_file in tar_files) { # Loop over simulations
       colonist_dt <- as.data.table(colonist_data)
       phylo_dt <- as.data.table(phylo)
       
+      rm(phylo, data, colonist_data)
+      
       # Index pour recherche rapide
       setkey(data_dt, id, time)
       
@@ -241,26 +250,35 @@ for (tar_file in tar_files) { # Loop over simulations
       colonist_dt[, ancestor_fit_main := get_fitness(ancestor_x, opt_main, wmax, sigma)]
       
       # Variable: nb_des
-      plan(multicore) # Définir la stratégie de parallélisation (par exemple, multi-core)
-      phylo_dt$colonization_id <- future_mapply(function(spp, location) {
-        get_colonization_id(spp, location, phylo_dt, colonist_dt)
-      }, phylo_dt$id, phylo_dt$location, SIMPLIFY = TRUE)
-      result <- phylo_dt[, .(nb_des = .N), by = colonization_id]
-      colonist_data <- merge(colonist_data, result, by = "colonization_id", all.x = TRUE)
+      # Graphe mère → id (orienté)
+      g <- graph_from_data_frame(phylo_dt[, .(mother, id)], directed = TRUE)
+
+      # Lancer la boucle sur les colonists
+      results <- lapply(colonist_dt$colonist, function(c) {
+        get_descendant_stats(c, g, phylo_dt, data_dt, colonist_dt)
+      })
       
-      # Variable: nb gen
-      colonist_data <-colonist_data %>%
-        rowwise() %>%
-        mutate(nb_gen = nb_generation(colonization_id))
+      # Convertir en data.table
+      results_dt <- rbindlist(results)
       
-      # Variable: average_x
-      colonist_data <- colonist_data %>%
-        rowwise() %>%
-        mutate(average_x = average_x(colonization_id))
+      # Fusionner avec colonist_dt
+      colonist_dt <- cbind(colonist_dt, results_dt)
+      
+      #
       
     } else { # no file for simulation
       message(sprintf("Simulation %d encore absente ou incomplète", i))
     }
+    
+    # Save 
+    # Vérifier quelles colonnes sont de type liste
+    list_columns <- which(sapply(colonist_dt, is.list))
+    
+    # Si des colonnes de type liste existent, les convertir
+    for (col in list_columns) {
+      colonist_dt[[col]] <- sapply(colonist_dt[[col]], function(x) if (is.null(x)) NA else x)
+    }
+    fwrite(colonist_dt,file=paste0("results/",sim_name,"_",i,"_colonist.txt"))
     
   } # END Loop over replicates
   
@@ -270,93 +288,3 @@ for (tar_file in tar_files) { # Loop over simulations
 } # END Loop over simulations
 
 
-
-for (n in 1:nsim) { # REPLICATE LOOP ####
-  
-  # metapopulation data
-  test <- read.table(paste0("results/",sim,"_",n,"_results.txt")) # read data
-  data <- test[,-1] # remove first column
-  colnames(data) <- c("id","x","fitness","origin","location","mother","offspring","migration","age","time")
-  data <- data %>% # add death and birth variables
-    group_by(id) %>%
-    mutate(
-      birth = min(time[age == 0], na.rm = TRUE),
-      death = max(time +1 , na.rm = TRUE) # careful, death time is not the last we observe in table data, it is this time+1 
-    ) %>%
-    ungroup()
-  
-  # phylogeny data
-  phylo <- data %>%
-    group_by(id) %>%
-    summarise(
-      birth = first(birth),
-      death = first(death),
-      mother = first(mother),
-      location = first(location)
-    ) %>%
-    ungroup()
-  
-  # colonist data 
-  v_colonist <- colonist(data)
-  colonist_data <- data.frame(colonist = v_colonist, colonization_id = NA, time = NA)
-  colonist_data <- colonist_data %>%
-    rowwise() %>%
-    mutate(time = colonization_time(colonist, data)) %>%
-    ungroup() %>%
-    arrange(time) %>%
-    mutate(colonization_id = row_number()) 
-  
-  # Variable : colonist trait at colonization time
-  colonist_data <- colonist_data %>%
-    rowwise() %>%
-    mutate(colonist_x = search_trait(colonist,data,time))
-  
-  # Variables: colonist fitness on the mainland and on the island
-  opt_main <- 0
-  opt_isl <- 0 + dopt
-  colonist_data <- colonist_data %>%
-    rowwise() %>%
-    mutate(colonist_fit_isl = get_fitness(colonist_x,opt_isl,wmax,sigma)) 
-  colonist_data <- colonist_data %>%
-    rowwise() %>%
-    mutate(colonist_fit_main = get_fitness(colonist_x,opt_main,wmax,sigma)) 
-  
-  # Variables: ancestor
-  colonist_data <- left_join(
-    colonist_data,
-    phylo %>% select(id, mother),  # <-- select only "id" and "mother"
-    by = c("colonist" = "id")
-  ) %>%
-    rename(ancestor = mother)
-  
-  # Variable: ancestor_x
-  colonist_data <- colonist_data %>%
-    rowwise() %>%
-    mutate(ancestor_x = search_trait(ancestor,data,time))
-  
-  # variable: ancestor_fit_main
-  colonist_data <- colonist_data %>%
-    rowwise() %>%
-    mutate(ancestor_fit_main = get_fitness(ancestor_x,opt_main,wmax,sigma)) 
-  
-  # Variable: nb_des
-  phylo <- phylo %>%
-    rowwise() %>%
-    mutate(colonization_id = search_col_id(id,phylo,colonist_data))
-  result <- phylo %>%
-    group_by(colonization_id) %>%
-    summarise(nb_des = n())
-  colonist_data <- colonist_data %>%
-    left_join(result, by = "colonization_id")
-  
-  # Variable: nb gen
-  colonist_data <-colonist_data %>%
-    rowwise() %>%
-    mutate(nb_gen = nb_generation(colonization_id))
-  
-  # Variable: average_x
-  colonist_data <- colonist_data %>%
-    rowwise() %>%
-    mutate(average_x = average_x(colonization_id))
-  
-} # END REPLICATE LOOP ####
