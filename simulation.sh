@@ -11,7 +11,7 @@ output_file="results/${sim_name}_main.Rout"
 mkdir -p results
 
 # Exécuter la simulation avec le nom de fichier de sortie donné
-R CMD BATCH --no-save R/main.R $output_file &
+R CMD BATCH --no-save R/main_parallel.R $output_file &
 
 # Afficher un message de confirmation
 echo "Simulation $sim_name is running. Output will be saved to $output_file"

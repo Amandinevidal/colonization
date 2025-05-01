@@ -1,10 +1,11 @@
-library(doParallel)
-library(foreach)
+
 
 #### Files initialization / Library / environment ####
 rm(list = ls())                                                                               # clear environment
 
 library(tidyverse)                                                                            # needed package
+library(doParallel)
+library(foreach)
 source("R/functions.R")                                                                       # import functions
 source("R/parameters.R")                                                                      # import parameters
 
@@ -25,7 +26,6 @@ write(paste("\nReproductibility information: \n Seed:",seed,"\n Rversion:",R.ver
 write(paste("RNG_kind:",RNGkind()), file=paste0("results/",sim,"/",sim,"_log.txt"),append=T)
 
 #### Setup parallel backend ####
-ncores <- detectCores() -10 
 cl <- makeCluster(ncores)
 registerDoParallel(cl)
 
