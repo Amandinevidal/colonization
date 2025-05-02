@@ -29,6 +29,8 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 library(igraph)
+library(doParallel)
+library(foreach)
 
 #### Functions ####
 extract_log_file <- function(data_files) {
@@ -117,56 +119,47 @@ get_descendant_stats <- function(ind, g, phylo_dt, data_dt, colonist_dt) {
   return(list(nb_des = nb_des, p_des = p_des, av_x = av_x))
 }
 
-#### Code ####
+#### Code principal ####
 
-# Results directory
 folder_path <- "results/"
+tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
 
-# List files .tar
-tar_files <- list.files(folder_path, pattern = "\\.tar.gz$", full.names = TRUE)
-
-for (tar_file in tar_files) { # Loop over simulations
-  # Sim name without extension
+for (tar_file in tar_files) { # START Loop over simulations
   sim_name <- sub("\\.tar\\.gz$", "", basename(tar_file))
   
-  # Temporary directory for file extraction
+  message("Simulation ", sim_name, " started.")
+  
   temp_dir <- tempfile(pattern = "sim_extract_")
   dir.create(temp_dir)
-  
-  # Extraction
   untar(tar_file, exdir = temp_dir)
   # print(list.files(temp_dir, recursive = TRUE))  
-  
-  # Read files
   data_files <- list.files(temp_dir, pattern = "\\.txt$", full.names = TRUE, recursive = TRUE)
   
-  # Read and load simulation parameters
   log_file <- extract_log_file(data_files)
   read_parameters(log_file)
-  
-  # Create a list for results files
   results_files <- extract_results_files(data_files, nsim)
   
-  for (i in seq_len(nsim)) {  # Loop over replicates
-    
+  # Setup parallel backend
+  n_cores <- parallel::detectCores() - 5
+  cl <- makeCluster(n_cores)
+  registerDoParallel(cl)
+  
+  foreach(i = seq_len(nsim), .packages = c("dplyr", "data.table", "igraph")) %dopar% { # START Loop over replicate
+
     file <- results_files[[i]]
     if (!is.null(file)) {
-      
-      # Read data
       data <- read.table(file)
       data <- data[,-1]
       colnames(data) <- c("id","x","fitness","origin","location","mother","offspring","migration","age","time")
       
-      # Add death and birth variables
-      data <- data %>% 
+      data <- data %>%
         group_by(id) %>%
         mutate(
           birth = min(time[age == 0], na.rm = TRUE),
-          death = max(time +1 , na.rm = TRUE) # careful, death time is not the last we observe in table data, it is this time+1 
+          death = max(time + 1 , na.rm = TRUE)
         ) %>%
         ungroup()
       
-      # Phylogeny data
       phylo <- data %>%
         group_by(id) %>%
         summarise(
@@ -177,7 +170,6 @@ for (tar_file in tar_files) { # Loop over simulations
         ) %>%
         ungroup()
       
-      # Colonist data 
       v_colonist <- colonist(data)
       colonist_data <- data.frame(colonist = v_colonist, colonization_id = NA, time = NA)
       colonist_data <- colonist_data %>%
@@ -187,37 +179,22 @@ for (tar_file in tar_files) { # Loop over simulations
         arrange(time) %>%
         mutate(colonization_id = row_number()) 
       
-      # Convertir data et colonist_data en data.tables
       data_dt <- as.data.table(data)
       colonist_dt <- as.data.table(colonist_data)
       phylo_dt <- as.data.table(phylo)
-      
-      rm(phylo, data, colonist_data)
-      
-      # Index pour recherche rapide
       setkey(data_dt, id, time)
       
-      # Variable : colonist trait at colonization time
-      # HOW TO - DATA.TABLE SQUARE BRACKET WORKFLOW: Structure DT[i, j := valeur] 
-      # We want to look at every lines so i is empty here
-      # := means we do a juncture between colonist_dt and data_dt which is a SD (subset of data) based on:
-      # lines in data_dt which "id" corresponds to "colonist" in colonist_dt
-      # and "time" in data_dt corresponds to "time" in colonist_dt
-      # for each line of colonist_dt we take the value in the colmun "x" of data_dt
       colonist_dt[, colonist_x := data_dt[.SD, on = .(id = colonist, time = time), x]]
-      
       n_missing <- colonist_dt[is.na(colonist_x), .N]
       if (n_missing > 0) {
         warning(n_missing, " missing trait for colonists ")
       }
       
-      # Variables: colonist fitness on the mainland and on the island
       opt_main <- 0
       opt_isl <- 0 + dopt
       colonist_dt[, colonist_fit_isl := get_fitness(colonist_x, opt_isl, wmax, sigma)]
       colonist_dt[, colonist_fit_main := get_fitness(colonist_x, opt_main, wmax, sigma)]
       
-      # Variables: ancestor
       colonist_dt <- merge(colonist_dt, 
                            phylo_dt[, .(id, mother)], 
                            by.x = "colonist", 
@@ -225,58 +202,43 @@ for (tar_file in tar_files) { # Loop over simulations
                            all.x = TRUE)
       setnames(colonist_dt, "mother", "ancestor")
       
-      # Variable: ancestor_x
       colonist_dt[, time_shifted := time - 1]
       colonist_dt[, ancestor_x := data_dt[.SD, on = .(id = ancestor, time = time), x]]
       colonist_dt[is.na(ancestor_x), 
                   ancestor_x := data_dt[.SD, on = .(id = ancestor, time = time_shifted), x]]
       colonist_dt[, time_shifted := NULL]
-      
-      # variable: ancestor_fit_main
       colonist_dt[, ancestor_fit_main := get_fitness(ancestor_x, opt_main, wmax, sigma)]
       
-      # Variable: nb_des
-      # Graphe mère → id (orienté) MAIS ON NE GARDE QUE LES INDIVIDUS SUR L ILE 
       g <- graph_from_data_frame(phylo_dt[, .(mother, id)], directed = TRUE)
-      phylo_isl <- phylo_dt[location != 0, id] # select only insular ind
-      g_island <- induced_subgraph(g, vids = as.character(phylo_isl))  # Keep only nodes with insular species, thus stop lineages when back migration!!!
-
-      # Lancer la boucle sur les colonists
+      phylo_isl <- phylo_dt[location != 0, id]
+      g_island <- induced_subgraph(g, vids = as.character(phylo_isl))  
+      
       results <- lapply(colonist_dt$colonist, function(c) {
         get_descendant_stats(c, g_island, phylo_dt, data_dt, colonist_dt)
       })
       
-      # Convertir en data.table
       results_dt <- rbindlist(results)
-      
-      # Fusionner avec colonist_dt
       colonist_dt <- cbind(colonist_dt, results_dt)
       
-      #
+      list_columns <- which(sapply(colonist_dt, is.list))
+      for (col in list_columns) {
+        colonist_dt[[col]] <- sapply(colonist_dt[[col]], function(x) if (is.null(x)) NA else x)
+      }
+      
+      fwrite(colonist_dt, file = paste0("results/", sim_name, "_", i, "_colonist.txt"))
       
     } else { # no file for simulation
-      message(sprintf("Simulation %d encore absente ou incomplète", i))
+      message(sprintf("Simulation %d not found", i))
     }
     
-    # Save 
-    # Vérifier quelles colonnes sont de type liste
-    list_columns <- which(sapply(colonist_dt, is.list))
+    message("Simulation ", sim_name, " over.")
     
-    # Si des colonnes de type liste existent, les convertir
-    for (col in list_columns) {
-      colonist_dt[[col]] <- sapply(colonist_dt[[col]], function(x) if (is.null(x)) NA else x)
-    }
-    fwrite(colonist_dt,file=paste0("results/",sim_name,"_",i,"_colonist.txt"))
-    
-    cat("Replicate:",i,"over.\n")
-    
-  } # END Loop over replicates
+  } # END Loop over replicate
   
-  # Clean
-  unlink(temp_dir, recursive = TRUE)
+  stopCluster(cl)
+  unlink(temp_dir, recursive = TRUE) # clean temporary dir
+  message("Simulation ", sim_name, " over.")
   
 } # END Loop over simulations
 
-
-
-
+# suppressMessages()
