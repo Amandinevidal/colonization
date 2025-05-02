@@ -89,19 +89,6 @@ get_fitness <- function(x, opt, wmax, sigma) {
   f <- wmax * exp( - ((x - opt)^2 / sigma^2))
   return(f)
 } 
-nb_generation <- function(colonization) {
-  time1 <- colonist_data[which(colonist_data$colonization_id == colonization),]$time
-  des <- phylo[which(phylo$colonization_id == colonization),]
-  time2 <- max(des$death)
-  return(time2 - time1)
-}
-average_x <- function(colonization) {
-  des <- phylo[which(phylo$colonization_id == colonization),]
-  subset_data <- data %>%
-    filter(id %in% des$id)
-  m <- mean(subset_data$x)
-  return(m)
-}
 get_descendant_stats <- function(ind, g, phylo_dt, data_dt, colonist_dt) {
   # Récupérer tous les descendants du colonist dans le graphe
   all_nodes <- subcomponent(g, v = as.character(ind), mode = "out")
@@ -162,7 +149,6 @@ for (tar_file in tar_files) { # Loop over simulations
   
   for (i in seq_len(nsim)) {  # Loop over replicates
     
-    i <- 1
     file <- results_files[[i]]
     if (!is.null(file)) {
       
@@ -250,12 +236,14 @@ for (tar_file in tar_files) { # Loop over simulations
       colonist_dt[, ancestor_fit_main := get_fitness(ancestor_x, opt_main, wmax, sigma)]
       
       # Variable: nb_des
-      # Graphe mère → id (orienté)
+      # Graphe mère → id (orienté) MAIS ON NE GARDE QUE LES INDIVIDUS SUR L ILE 
       g <- graph_from_data_frame(phylo_dt[, .(mother, id)], directed = TRUE)
+      phylo_isl <- phylo_dt[location != 0, id] # select only insular ind
+      g_island <- induced_subgraph(g, vids = as.character(phylo_isl))  # Keep only nodes with insular species, thus stop lineages when back migration!!!
 
       # Lancer la boucle sur les colonists
       results <- lapply(colonist_dt$colonist, function(c) {
-        get_descendant_stats(c, g, phylo_dt, data_dt, colonist_dt)
+        get_descendant_stats(c, g_island, phylo_dt, data_dt, colonist_dt)
       })
       
       # Convertir en data.table
@@ -280,11 +268,15 @@ for (tar_file in tar_files) { # Loop over simulations
     }
     fwrite(colonist_dt,file=paste0("results/",sim_name,"_",i,"_colonist.txt"))
     
+    cat("Replicate:",i,"over.\n")
+    
   } # END Loop over replicates
   
   # Clean
   unlink(temp_dir, recursive = TRUE)
   
 } # END Loop over simulations
+
+
 
 
