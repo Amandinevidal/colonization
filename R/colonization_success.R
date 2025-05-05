@@ -122,8 +122,8 @@ get_descendant_stats <- function(ind, g, phylo_dt, data_dt, colonist_dt) {
 #### Code principal ####
 
 folder_path <- "results/"
-tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
-
+#tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
+tar_files <- c("results//D1.tar.gz","results//E1.tar.gz","results//J1.tar.gz","results//L1.tar.gz","results//M1.tar.gz","results//N1.tar.gz","results//O1.tar.gz","results//T1.tar.gz")
 for (tar_file in tar_files) { # START Loop over simulations
   sim_name <- sub("\\.tar\\.gz$", "", basename(tar_file))
   

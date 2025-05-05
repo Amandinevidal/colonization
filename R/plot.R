@@ -1,3 +1,157 @@
+#### PLOTS ####
+rm(list = ls())
+library(data.table)
+library(ggplot2)
+
+color <- c("A1" = "blue", "B1" = "red", "C1" = "green", "D1" = "purple")
+
+
+folder_path <- "results/"
+tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
+data <- data.table()
+
+for (tar_file in tar_files) { # START Loop over simulations
+  sim_name <- sub("\\.tar\\.gz$", "", basename(tar_file))
+  all_colonist <- rbindlist(lapply(1:30, function(i) {
+    file <- paste0(folder_path, sim_name, "_", i, "_colonist.txt")
+    if (file.exists(file)) {
+      dt <- fread(file)
+      dt[, replicate := i]
+      dt[, sim_id := sim_name]
+      return(dt)
+    } else {
+      return(NULL) # ou data.table() pour rester explicite
+    }
+  }), use.names = TRUE, fill = TRUE)
+  data <- rbind(data, all_colonist, use.names = TRUE, fill = TRUE)
+}
+
+# DATA SUBSET ####
+data1 <- data[grepl("^[A-Z]$", sim_id)]
+data2 <- data[grepl("^[A-Z]1$", sim_id)]
+
+data_size_effect <- data[sim_id %in% c("A1", "B1", "C1", "D1", "E1")]
+data_size_effect[, continent_size := 
+                   ifelse(sim_id == "A1", 500,
+                          ifelse(sim_id == "B1", 1000,
+                                 ifelse(sim_id == "C1", 2000,
+                                        ifelse(sim_id == "D1", 4000,
+                                               ifelse(sim_id == "E1", 5000, NA)))))]
+data_hab_effect <- data[sim_id %in% c("A1", "F1", "K1", "P1", "U1")]
+data_hab_effect[, habitat_difference := 
+                   ifelse(sim_id == "A1", 0,
+                          ifelse(sim_id == "F1", 1,
+                                 ifelse(sim_id == "K1", 2,
+                                        ifelse(sim_id == "P1", 5,
+                                               ifelse(sim_id == "U1", 10, NA)))))]
+
+# NB_DES GROUPS ####
+breaks <- c(0, 1, 2, 3, 4, 5, Inf)
+labels <- c("0", "1", "2", "3", "4","5+")
+cut_variable_groups <- function(dt, var, new_col, breaks, labels) {
+  # Vérifie la validité des inputs
+  if (length(breaks) - 1 != length(labels)) {
+    stop("Le nombre de labels doit être égal à length(breaks) - 1.")
+  }
+  dt[, (new_col) := cut(get(var),
+                        breaks = breaks,
+                        labels = labels,
+                        right = FALSE,
+                        include.lowest = TRUE)]
+}
+cut_variable_groups(data_size_effect, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+
+# SIZE EFFECT ####
+ggplot(data_size_effect, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow", "5000" = "red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent for an island of 500 individuals on the number of \ndescendants by colonization (simulations A1 à E1)",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+ggplot(data_size_effect, aes(x = p_des, color = as.factor(continent_size))) + 
+  geom_density(size = 1) + 
+  scale_color_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow", "5000" = "red")
+  ) + 
+  labs(title = "Effect of the size of the continent for an island of 500 individuals on the persistence \ntime distribution of colonized lineages",
+       x = "Temps de persistance",
+       y = "Densité",
+       color = "Continent size") +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+
+# HAB EFFECT ####
+ggplot(data_hab_effect, aes(x = nb_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference (with identical size) on the number of \ndescendants by colonization (simulations A1, F1, K1, P1, U1)",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+
+
+
+
+
+
+
+
+
+# SUMMARY DES VARIABLES IMPORTANTES
+summary_dt <- data2[, .(
+  mean_nb_des = mean(nb_des),
+  mean_p_des = mean(p_des),
+  mean_av_x = mean(av_x)
+), by = .(sim_id)]
+
+# PLOT SUMMARY VAR
+ggplot(summary_dt, aes(x = taille_pop, y = mean_nb_des, color = ecart_optimum)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Taille de la population source", y = "Nb moyen de descendants",
+       title = "Effet de la taille de population et de l’écart écologique")
+
+# TEST EN BOXPLOT
+ggplot(all_colonist, aes(x = sim_id, y = nb_des)) +
+  geom_boxplot() +
+  labs(x = "Simulation", y = "Nombre de descendants",
+       title = "Succès de colonisation par simulation")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# OLD CODE ####
+
+
 library(ggplot2)
 library(ggridges)
 

@@ -1,9 +1,9 @@
-sim <- "G1"            # name your simulation
+sim <- "K1"            # name your simulation
 nsim <- 30            # number of replicates
 time <- 1000          # simulation time
-k <- 1000             # mainland carrying capacity
-ipk <- 0.5              # proportion of the carrying capacity of the mainland that corresponds to the carrying capacity of the island
-dopt <- 1             # difference between mainland ecological optimum (0) and island optimum (0+dopt) 
+k <- 500             # mainland carrying capacity
+ipk <- 1              # proportion of the carrying capacity of the mainland that corresponds to the carrying capacity of the island
+dopt <- 2             # difference between mainland ecological optimum (0) and island optimum (0+dopt) 
 wopt <- 10/3          # width ecological niche (same for mainland and island optimum)
 mr <- 0.5             # migration rate
 msri <- 0.8           # migration survival rate isl -> main
