@@ -1,0 +1,298 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu
+
+R est un logiciel libre livré sans AUCUNE GARANTIE.
+Vous pouvez le redistribuer sous certaines conditions.
+Tapez 'license()' ou 'licence()' pour plus de détails.
+
+R est un projet collaboratif avec de nombreux contributeurs.
+Tapez 'contributors()' pour plus d'information et
+'citation()' pour la façon de le citer dans les publications.
+
+Tapez 'demo()' pour des démonstrations, 'help()' pour l'aide
+en ligne ou 'help.start()' pour obtenir l'aide au format HTML.
+Tapez 'q()' pour quitter R.
+
+[Sauvegarde de la session précédente restaurée]
+
+> # We want to quantify the success of colonization such as:
+> #   - the number of (surviving) individuals emerging from a colonization events
+> #   - the number of generation emerging from a colonization event
+> # We want to quantify the adaptation of local individuals coming from a colonization event such as:
+> #   - tracking the average trait of descendant from a colonization events
+> #   - tracking the average time taken to reach the local optimum within a colonist lineage
+> # We want to quantify which continental individuals are the one colonizing the most, such as:
+> #   - what is the trait/fitness value of the colonist and ancestor
+> 
+> # Thus we need a "colonist_data" file, containing from each colonization event these information to be able to plot the average of all these variables for different replicates and to compare it between different set of parameters.
+> # This file is named "colonist.txt" with the corresponding simulation id, and contains a table with each line being a colonization event with columns describing each event such as:
+> #   - "id" the colonization name
+> #   - "colonist" the individual that, as an offspring, migrated from the mainland to the island (only offspring migrate)
+> #   - "colonist_x" the ecological trait value of the colonist
+> #   - "colonist_fit_island" the fitness value of the colonist on the island habitat
+> #   - "colonist_fit_main" the fitness value of the colonist on the mainland
+> #   - "ancestor" the mainland individual that gave birth to the offspring that migrated
+> #   - "ancestor_x" the ecological trait value of the colonist
+> #   - "ancestor_fit_main" the fitness value of the ancestor on the mainland
+> #   - "time" the time during which the colonist arrived on the island
+> #   - "nb_des" the number of individuals descended from the colonist individual
+> #   - "nb_gen" the time (expressed as generations here) of persistence of all individual descendant from this colonization event
+> #   - "mean_x" the average trait of the entire lineage
+> 
+> rm(list = ls())
+> 
+> #### Library ####
+> library(dplyr)
+
+Attachement du package : ‘dplyr’
+
+Les objets suivants sont masqués depuis ‘package:stats’:
+
+    filter, lag
+
+Les objets suivants sont masqués depuis ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(ggplot2)
+> library(data.table)
+
+Attachement du package : ‘data.table’
+
+Les objets suivants sont masqués depuis ‘package:dplyr’:
+
+    between, first, last
+
+> library(igraph)
+
+Attachement du package : ‘igraph’
+
+Les objets suivants sont masqués depuis ‘package:dplyr’:
+
+    as_data_frame, groups, union
+
+Les objets suivants sont masqués depuis ‘package:stats’:
+
+    decompose, spectrum
+
+L'objet suivant est masqué depuis ‘package:base’:
+
+    union
+
+> library(doParallel)
+Le chargement a nécessité le package : foreach
+Le chargement a nécessité le package : iterators
+Le chargement a nécessité le package : parallel
+> library(foreach)
+> 
+> #### Functions ####
+> extract_log_file <- function(data_files) {
++   log_file <- data_files[grepl("_log\\.txt$", data_files)]
++   if (length(log_file) == 0) {
++     stop("Aucun fichier log trouvé !")
++   }
++   return(log_file)
++ }
+> read_parameters <- function(log_file) {
++   lines <- readLines(log_file)
++   param <- c("nsim", "time", "k", "ipk", "dopt", "wopt", "mr", "msri", "msrm", "d", "wmax", "sigma", "mu")
++   
++   for (p in param) {
++     # Cherche la ligne contenant l'assignation du paramètre
++     line <- grep(paste0("^\\s*", p, "\\s*<-"), lines, value = TRUE)
++     
++     if (length(line) == 1) {
++       # Evaluer l'expression directement
++       expression <- sub(".*<-\\s*(.*)", "\\1", line)  # Extraction de l'expression
++       value <- eval(parse(text = expression))  # Evaluer l'expression en R
++       assign(p, value, envir = .GlobalEnv)
++     } else {
++       warning(paste("Paramètre", p, "non trouvé ou multiple fois défini."))
++     }
++   }
++ }
+> extract_results_files <- function(data_files, nsim) {
++   result_files <- grep("_results\\.txt$", data_files, value = TRUE)
++   sim_ids <- as.integer(sub(".*_(\\d+)_results\\.txt$", "\\1", result_files))
++   results_list <- vector("list", nsim)
++   names(results_list) <- paste0("sim_", seq_len(nsim))
++   for (i in seq_along(result_files)) {
++     id <- sim_ids[i]
++     if (!is.na(id) && id >= 1 && id <= nsim) {
++       results_list[[id]] <- result_files[i]
++     }
++   }
++   return(results_list)
++ }
+> colonist <- function(data){
++   subset <- data[which(data$origin == 0 & data$location == 1 & data$migration == 1),]
++   if(nrow(subset) == 0) {c <- 0} else {c <- unique(subset$id)}
++ }
+> colonization_time <- function(ind, data) {
++   subset <- data[which(data$id == ind),]
++   time <- subset[which(subset$age == 0),]$time
++   return(time)
++ }
+> search_trait <- function(ind,data,time){
++   line <- data[which(data$id == ind & data$time == time),]
++   if(nrow(line) == 0) { # individual died at this time, search before
++     line <- data[which(data$id == ind & data$time == time - 1),]
++   }
++   return(line$x)
++ }
+> get_fitness <- function(x, opt, wmax, sigma) {
++   f <- wmax * exp( - ((x - opt)^2 / sigma^2))
++   return(f)
++ } 
+> get_descendant_stats <- function(ind, g, phylo_dt, data_dt, colonist_dt) {
++   # Récupérer tous les descendants du colonist dans le graphe
++   all_nodes <- subcomponent(g, v = as.character(ind), mode = "out")
++   descendants <- setdiff(as.integer(V(g)[all_nodes]$name), ind)  # sans lui-même
++   
++   nb_des <- length(descendants)
++   
++   # Si pas de descendants, renvoyer NA
++   if (nb_des == 0) {
++     return(list(nb_des = 0, p_des = NA, av_x = NA))
++   }
++   
++   # Colonization time
++   colonization_time <- colonist_dt[colonist == ind, time]
++   
++   # Persistance (temps depuis extinction du dernier descendant)
++   filtered_phylo <- phylo_dt[id %in% c(descendants,ind)]
++   extinction_time <- max(filtered_phylo$death, na.rm = TRUE)
++   p_des <- abs(colonization_time - extinction_time)
++   
++   # Moyenne du trait au premier passage de chaque descendant
++   filtered_data <- data_dt[id %in% descendants]
++   filtered_data <- filtered_data[, .SD[which.min(time)], by = id]
++   av_x <- mean(filtered_data$x, na.rm = TRUE)
++   
++   return(list(nb_des = nb_des, p_des = p_des, av_x = av_x))
++ }
+> 
+> #### Code principal ####
+> 
+> folder_path <- "results/"
+> #tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
+> tar_files <- c("results//D1.tar.gz","results//E1.tar.gz","results//J1.tar.gz","results//L1.tar.gz","results//M1.tar.gz","results//N1.tar.gz","results//O1.tar.gz","results//T1.tar.gz")
+> for (tar_file in tar_files) { # START Loop over simulations
++   sim_name <- sub("\\.tar\\.gz$", "", basename(tar_file))
++   
++   message("Simulation ", sim_name, " started.")
++   
++   temp_dir <- tempfile(pattern = "sim_extract_")
++   dir.create(temp_dir)
++   untar(tar_file, exdir = temp_dir)
++   # print(list.files(temp_dir, recursive = TRUE))  
++   data_files <- list.files(temp_dir, pattern = "\\.txt$", full.names = TRUE, recursive = TRUE)
++   
++   log_file <- extract_log_file(data_files)
++   read_parameters(log_file)
++   results_files <- extract_results_files(data_files, nsim)
++   
++   # Setup parallel backend
++   n_cores <- parallel::detectCores() - 5
++   cl <- makeCluster(n_cores)
++   registerDoParallel(cl)
++   
++   foreach(i = seq_len(nsim), .packages = c("dplyr", "data.table", "igraph")) %dopar% { # START Loop over replicate
++ 
++     file <- results_files[[i]]
++     if (!is.null(file)) {
++       data <- read.table(file)
++       data <- data[,-1]
++       colnames(data) <- c("id","x","fitness","origin","location","mother","offspring","migration","age","time")
++       
++       data <- data %>%
++         group_by(id) %>%
++         mutate(
++           birth = min(time[age == 0], na.rm = TRUE),
++           death = max(time + 1 , na.rm = TRUE)
++         ) %>%
++         ungroup()
++       
++       phylo <- data %>%
++         group_by(id) %>%
++         summarise(
++           birth = first(birth),
++           death = first(death),
++           mother = first(mother),
++           location = first(location)
++         ) %>%
++         ungroup()
++       
++       v_colonist <- colonist(data)
++       colonist_data <- data.frame(colonist = v_colonist, colonization_id = NA, time = NA)
++       colonist_data <- colonist_data %>%
++         rowwise() %>%
++         mutate(time = colonization_time(colonist, data)) %>%
++         ungroup() %>%
++         arrange(time) %>%
++         mutate(colonization_id = row_number()) 
++       
++       data_dt <- as.data.table(data)
++       colonist_dt <- as.data.table(colonist_data)
++       phylo_dt <- as.data.table(phylo)
++       setkey(data_dt, id, time)
++       
++       colonist_dt[, colonist_x := data_dt[.SD, on = .(id = colonist, time = time), x]]
++       n_missing <- colonist_dt[is.na(colonist_x), .N]
++       if (n_missing > 0) {
++         warning(n_missing, " missing trait for colonists ")
++       }
++       
++       opt_main <- 0
++       opt_isl <- 0 + dopt
++       colonist_dt[, colonist_fit_isl := get_fitness(colonist_x, opt_isl, wmax, sigma)]
++       colonist_dt[, colonist_fit_main := get_fitness(colonist_x, opt_main, wmax, sigma)]
++       
++       colonist_dt <- merge(colonist_dt, 
++                            phylo_dt[, .(id, mother)], 
++                            by.x = "colonist", 
++                            by.y = "id", 
++                            all.x = TRUE)
++       setnames(colonist_dt, "mother", "ancestor")
++       
++       colonist_dt[, time_shifted := time - 1]
++       colonist_dt[, ancestor_x := data_dt[.SD, on = .(id = ancestor, time = time), x]]
++       colonist_dt[is.na(ancestor_x), 
++                   ancestor_x := data_dt[.SD, on = .(id = ancestor, time = time_shifted), x]]
++       colonist_dt[, time_shifted := NULL]
++       colonist_dt[, ancestor_fit_main := get_fitness(ancestor_x, opt_main, wmax, sigma)]
++       
++       g <- graph_from_data_frame(phylo_dt[, .(mother, id)], directed = TRUE)
++       phylo_isl <- phylo_dt[location != 0, id]
++       g_island <- induced_subgraph(g, vids = as.character(phylo_isl))  
++       
++       results <- lapply(colonist_dt$colonist, function(c) {
++         get_descendant_stats(c, g_island, phylo_dt, data_dt, colonist_dt)
++       })
++       
++       results_dt <- rbindlist(results)
++       colonist_dt <- cbind(colonist_dt, results_dt)
++       
++       list_columns <- which(sapply(colonist_dt, is.list))
++       for (col in list_columns) {
++         colonist_dt[[col]] <- sapply(colonist_dt[[col]], function(x) if (is.null(x)) NA else x)
++       }
++       
++       fwrite(colonist_dt, file = paste0("results/", sim_name, "_", i, "_colonist.txt"))
++       
++     } else { # no file for simulation
++       message(sprintf("Simulation %d not found", i))
++     }
++     
++     message("Simulation ", sim_name, " over.")
++     
++   } # END Loop over replicate
++   
++   stopCluster(cl)
++   unlink(temp_dir, recursive = TRUE) # clean temporary dir
++   message("Simulation ", sim_name, " over.")
++   
++ } # END Loop over simulations
+Simulation D1 started.
