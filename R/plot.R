@@ -25,11 +25,11 @@ for (tar_file in tar_files) { # START Loop over simulations
   }), use.names = TRUE, fill = TRUE)
   data <- rbind(data, all_colonist, use.names = TRUE, fill = TRUE)
 }
+data[is.na(p_des), p_des := 0]
 
 # DATA SUBSET ####
-data1 <- data[grepl("^[A-Z]$", sim_id)]
-data2 <- data[grepl("^[A-Z]1$", sim_id)]
 
+# data_size_effet = same habitat increasing size
 data_size_effect <- data[sim_id %in% c("A1", "B1", "C1", "D1", "E1")]
 data_size_effect[, continent_size := 
                    ifelse(sim_id == "A1", 500,
@@ -37,6 +37,42 @@ data_size_effect[, continent_size :=
                                  ifelse(sim_id == "C1", 2000,
                                         ifelse(sim_id == "D1", 4000,
                                                ifelse(sim_id == "E1", 5000, NA)))))]
+
+# data_size_effect_hab1
+data_size_effect_h1 <- data[sim_id %in% c("F1", "G1", "H1", "I1","J1")] 
+data_size_effect_h1[, continent_size := 
+                      ifelse(sim_id == "F1", 500,
+                             ifelse(sim_id == "G1", 1000,
+                                    ifelse(sim_id == "H1", 2000,
+                                           ifelse(sim_id == "I1", 4000,
+                                                  ifelse(sim_id == "J1", 5000, NA)))))]
+
+# data_size_effect_hab2
+data_size_effect_h2 <- data[sim_id %in% c("K1", "L1", "M1", "N1","O1")] 
+data_size_effect_h2[, continent_size := 
+                      ifelse(sim_id == "K1", 500,
+                             ifelse(sim_id == "L1", 1000,
+                                    ifelse(sim_id == "M1", 2000,
+                                           ifelse(sim_id == "N1", 4000,
+                                                  ifelse(sim_id == "O1", 5000, NA)))))]
+
+# data_size_effect_hab5
+data_size_effect_h5 <- data[sim_id %in% c("P1", "Q1", "R1", "S1","T1")] 
+data_size_effect_h5[, continent_size := 
+                      ifelse(sim_id == "P1", 500,
+                             ifelse(sim_id == "Q1", 1000,
+                                    ifelse(sim_id == "R1", 2000,
+                                           ifelse(sim_id == "S1", 4000,
+                                                  ifelse(sim_id == "T1", 5000, NA)))))]
+
+# data_size_effect_hab10
+data_size_effect_h10 <- data[sim_id %in% c("U1", "V1", "W1")] # MISSING X1 and Z1
+data_size_effect_h10[, continent_size := 
+                      ifelse(sim_id == "U1", 500,
+                             ifelse(sim_id == "V1", 1000,
+                                    ifelse(sim_id == "W1", 2000, NA)))]
+
+# data_hab_effect = same size increasing habitat difference
 data_hab_effect <- data[sim_id %in% c("A1", "F1", "K1", "P1", "U1")]
 data_hab_effect[, habitat_difference := 
                    ifelse(sim_id == "A1", 0,
@@ -45,9 +81,43 @@ data_hab_effect[, habitat_difference :=
                                         ifelse(sim_id == "P1", 5,
                                                ifelse(sim_id == "U1", 10, NA)))))]
 
+# data_hab_effect_s0.5 = size 0.5 increased habitat difference
+data_hab_effect_s0.5 <- data[sim_id %in% c("B1", "G1", "L1","Q1","V1")] 
+data_hab_effect_s0.5[, habitat_difference := 
+                       ifelse(sim_id == "B1", 0,
+                              ifelse(sim_id == "G1", 1,
+                                     ifelse(sim_id == "L1", 2,
+                                            ifelse(sim_id == "Q1", 5,
+                                                   ifelse(sim_id == "V1", 10, NA)))))]
+
+# data_hab_effect_s0.25 = size 0.25 increased habitat difference
+data_hab_effect_s0.25 <- data[sim_id %in% c("C1", "H1", "M1","R1","W1")] #### MISSING R1 AND W1
+data_hab_effect_s0.25[, habitat_difference := 
+                        ifelse(sim_id == "C1", 0,
+                               ifelse(sim_id == "H1", 1,
+                                      ifelse(sim_id == "M1", 2,
+                                             ifelse(sim_id == "R1", 5,
+                                                    ifelse(sim_id == "W1", 10, NA)))))]
+
+# data_hab_effect_s0.125 = size 0.125 increased habitat difference
+data_hab_effect_s0.125 <- data[sim_id %in% c("D1", "I1", "N1","S1")] #### MISSING X1
+data_hab_effect_s0.125[, habitat_difference := 
+                         ifelse(sim_id == "D1", 0,
+                                ifelse(sim_id == "I1", 1,
+                                       ifelse(sim_id == "N1", 2,
+                                              ifelse(sim_id == "S1", 5, NA))))]
+
+# data_hab_effect_s0.1 = size 0.1 increased habitat difference
+data_hab_effect_s0.1 <- data[sim_id %in% c("E1", "J1", "O1","T1")] #### MISSING Z1
+data_hab_effect_s0.1[, habitat_difference := 
+                         ifelse(sim_id == "E1", 0,
+                                ifelse(sim_id == "J1", 1,
+                                       ifelse(sim_id == "O1", 2,
+                                              ifelse(sim_id == "T1", 5, NA))))]
+
 # NB_DES GROUPS ####
-breaks <- c(0, 1, 2, 3, 4, 5, Inf)
-labels <- c("0", "1", "2", "3", "4","5+")
+breaks <- c(0, 1, 3, 10, 15, 20,Inf)
+labels <- c("0", "1-2", "3-10", "10-15", "15-20", "20+")
 cut_variable_groups <- function(dt, var, new_col, breaks, labels) {
   # Vérifie la validité des inputs
   if (length(breaks) - 1 != length(labels)) {
@@ -59,67 +129,563 @@ cut_variable_groups <- function(dt, var, new_col, breaks, labels) {
                         right = FALSE,
                         include.lowest = TRUE)]
 }
+
 cut_variable_groups(data_size_effect, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h1, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h2, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h5, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h10, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
 cut_variable_groups(data_hab_effect, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.5, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.25, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.125, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.1, var = "nb_des", new_col = "nb_des_group", breaks = breaks, labels = labels)
+
+
+# P_DES GROUPS ####
+breaks <- c(0, 10, 20, 50, 100, Inf)
+labels <- c("0–10", "10–20", "20–50", "50–100", "100+")
+cut_variable_groups(data_size_effect, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h1, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h2, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h5, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_size_effect_h10, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.5, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.25, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.125, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+cut_variable_groups(data_hab_effect_s0.1, var = "p_des", new_col = "p_des_group", breaks = breaks, labels = labels)
+
 
 # SIZE EFFECT ####
-ggplot(data_size_effect, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
+p <- ggplot(data_size_effect, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
   geom_bar(position = "dodge") +
   scale_fill_manual(
     values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow", "5000" = "red")
   ) + 
   labs(
-    title = "Effect of the size of the continent for an island of 500 individuals on the number of \ndescendants by colonization (simulations A1 à E1)",
+    title = "Effect of the size of the continent on the number of \ndescendants by colonization",
     x = "Number of descendants",
     y = "Events",
     fill = "Continent size"  
   ) +
   theme_minimal() +
-  theme(legend.position = "top")
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
 
-ggplot(data_size_effect, aes(x = p_des, color = as.factor(continent_size))) + 
-  geom_density(size = 1) + 
-  scale_color_manual(
+png("results/plots/size_effect_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+p <- ggplot(data_size_effect, aes(x = p_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
     values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow", "5000" = "red")
   ) + 
-  labs(title = "Effect of the size of the continent for an island of 500 individuals on the persistence \ntime distribution of colonized lineages",
-       x = "Temps de persistance",
-       y = "Densité",
-       color = "Continent size") +
+  labs(
+    title = "Effect of the size of the continent on lineage persistence",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
   theme_minimal() +
-  theme(legend.position = "top")
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/size_effect_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+# SIZE EFFECT HABITAT DIFF 1####
+p <- ggplot(data_size_effect_h1, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500"="blue","1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+
+png("results/plots/size_effect_h1_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+p <- ggplot(data_size_effect_h1, aes(x = p_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on lineage persistence",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/size_effect_h1_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+# SIZE EFFECT HABITAT DIFF 2####
+p <- ggplot(data_size_effect_h2, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500"="blue","1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+
+png("results/plots/size_effect_h2_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+p <- ggplot(data_size_effect_h2, aes(x = p_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on lineage persistence",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/size_effect_h2_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+# SIZE EFFECT HABITAT DIFF 5 ####
+p <- ggplot(data_size_effect_h5, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500"="blue","1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+
+png("results/plots/size_effect_h5_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+p <- ggplot(data_size_effect_h5, aes(x = p_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on lineage persistence",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/size_effect_h5_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+# SIZE EFFECT HABITAT DIFF 10 ####
+p <- ggplot(data_size_effect_h10, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500"="blue","1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+
+png("results/plots/size_effect_h10_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+p <- ggplot(data_size_effect_h10, aes(x = p_des_group, fill = as.factor(continent_size))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow","5000"="red")
+  ) + 
+  labs(
+    title = "Effect of the size of the continent on lineage persistence",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Continent size"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/size_effect_h10_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
 # HAB EFFECT ####
-ggplot(data_hab_effect, aes(x = nb_des_group, fill = as.factor(habitat_difference))) + 
+p <- ggplot(data_hab_effect, aes(x = nb_des_group, fill = as.factor(habitat_difference))) + 
   geom_bar(position = "dodge") +
   scale_fill_manual(
     values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
   ) + 
   labs(
-    title = "Effect of the habitat difference (with identical size) on the number of \ndescendants by colonization (simulations A1, F1, K1, P1, U1)",
+    title = "Effect of the habitat difference on the number of \ndescendants by colonization",
     x = "Number of descendants",
     y = "Events",
     fill = "Habitat difference"  
   ) +
   theme_minimal() +
-  theme(legend.position = "top")
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/habitat_effect_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+p <- ggplot(data_hab_effect, aes(x = p_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference (with identical size) on the persistence \ntime by colonization (simulations A1 à E1)",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/hab_effect_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+# HAB EFFECT - SIZE1000 ####
+p <- ggplot(data_hab_effect_s0.5, aes(x = nb_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/habitat_effect_size_1000_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+p <- ggplot(data_hab_effect_s0.5, aes(x = p_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference (with identical size) on the persistence \ntime by colonization (simulations A1 à E1)",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/hab_effect_size_1000_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+# HAB EFFECT - SIZE2000 ####
+p <- ggplot(data_hab_effect_s0.25, aes(x = nb_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/habitat_effect_size_2000_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+p <- ggplot(data_hab_effect_s0.25, aes(x = p_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference (with identical size) on the persistence \ntime by colonization (simulations A1 à E1)",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/hab_effect_size_2000_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+# HAB EFFECT - SIZE4000 ####
+p <- ggplot(data_hab_effect_s0.125, aes(x = nb_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/habitat_effect_size_4000_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
+p <- ggplot(data_hab_effect_s0.125, aes(x = p_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference (with identical size) on the persistence \ntime by colonization (simulations A1 à E1)",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/hab_effect_size_4000_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+# HAB EFFECT - SIZE5000 ####
+p <- ggplot(data_hab_effect_s0.1, aes(x = nb_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference on the number of \ndescendants by colonization",
+    x = "Number of descendants",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/habitat_effect_size_5000_hist_nb_des.png",width=1200,height = 800)
+print(p)
+dev.off()
+
+p <- ggplot(data_hab_effect_s0.1, aes(x = p_des_group, fill = as.factor(habitat_difference))) + 
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("0" = "blue", "1" = "green", "2" = "yellow", "5" = "orange", "10" = "red")
+  ) + 
+  labs(
+    title = "Effect of the habitat difference (with identical size) on the persistence \ntime by colonization (simulations A1 à E1)",
+    x = "Time persistence",
+    y = "Events",
+    fill = "Habitat difference"  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),               # taille générale du texte
+    plot.title = element_text(size = 20, face = "bold"),  # titre du graphique
+    axis.title = element_text(size = 20),         # titres des axes
+    axis.text = element_text(size = 20),          # texte des axes
+    legend.text = element_text(size = 20),        # texte de la légende
+    legend.title = element_text(size = 20)        # titre de la légende
+  )
+png("results/plots/hab_effect_size_5000_hist_p_des.png",width=1200,height = 800)
+print(p)
+dev.off()
 
 
 
 # SUMMARY DES VARIABLES IMPORTANTES
-summary_dt <- data2[, .(
-  mean_nb_des = mean(nb_des),
-  mean_p_des = mean(p_des),
-  mean_av_x = mean(av_x)
-), by = .(sim_id)]
+summary_dt <- data_size_effect[, .(
+  mean_nb_des = mean(nb_des,na.rm=T),
+  max_nb_des = max(nb_des,na.rm=T),
+  min_nb_des = min(nb_des,na.rm=T),
+  mean_p_des = mean(p_des,na.rm=T),
+  max_p_des = max(p_des,na.rm=T),
+  min_p_des = min(p_des,na.rm=T),
+  mean_av_x = mean(av_x,na.rm=T),
+  max_av_x = max(av_x,na.rm=T),
+  min_av_x = min(av_x,na.rm=T)
+), by = .(continent_size)]
 
 # PLOT SUMMARY VAR
 ggplot(summary_dt, aes(x = taille_pop, y = mean_nb_des, color = ecart_optimum)) +
