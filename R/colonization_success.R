@@ -122,8 +122,8 @@ get_descendant_stats <- function(ind, g, phylo_dt, data_dt, colonist_dt) {
 #### Code principal ####
 
 folder_path <- "results/"
-#tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
-tar_files <- c("results//D1.tar.gz","results//E1.tar.gz","results//J1.tar.gz","results//L1.tar.gz","results//M1.tar.gz","results//N1.tar.gz","results//O1.tar.gz","results//T1.tar.gz")
+tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
+tar_files <- c("results//B3.tar.gz","results//C3.tar.gz","results//D3.tar.gz")
 for (tar_file in tar_files) { # START Loop over simulations
   sim_name <- sub("\\.tar\\.gz$", "", basename(tar_file))
   
@@ -140,7 +140,7 @@ for (tar_file in tar_files) { # START Loop over simulations
   results_files <- extract_results_files(data_files, nsim)
   
   # Setup parallel backend
-  n_cores <- parallel::detectCores() - 5
+  n_cores <- 10
   cl <- makeCluster(n_cores)
   registerDoParallel(cl)
   
@@ -212,6 +212,7 @@ for (tar_file in tar_files) { # START Loop over simulations
       g <- graph_from_data_frame(phylo_dt[, .(mother, id)], directed = TRUE)
       phylo_isl <- phylo_dt[location != 0, id]
       g_island <- induced_subgraph(g, vids = as.character(phylo_isl))  
+      rm(phylo_isl,g)
       
       results <- lapply(colonist_dt$colonist, function(c) {
         get_descendant_stats(c, g_island, phylo_dt, data_dt, colonist_dt)
@@ -226,6 +227,7 @@ for (tar_file in tar_files) { # START Loop over simulations
       }
       
       fwrite(colonist_dt, file = paste0("results/", sim_name, "_", i, "_colonist.txt"))
+      rm(data_dt,colonist_dt,phylo_dt,g_island,result_dt)
       
     } else { # no file for simulation
       message(sprintf("Simulation %d not found", i))
