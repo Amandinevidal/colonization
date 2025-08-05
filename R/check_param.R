@@ -2,7 +2,7 @@
 #### Author : Amandine Vidal-Hosteng
 #### Encoding : UTF-8
 #### Email : amandine.vidalhosteng@gmail.com
-#### File path : colonization/R/test_param.R
+#### File path : colonization/R/check_param.R
 #### 
 #### This file contains a suite of functions designed to test the 
 #### correctness of the parameters in your models. 

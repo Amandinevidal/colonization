@@ -1,3 +1,13 @@
+#### -----------------------------------------------------------------####
+#### Author : Amandine Vidal-Hosteng
+#### Encoding : UTF-8
+#### Email : amandine.vidalhosteng@gmail.com
+#### File path : colonization/R/parameters_calibration.R
+#### 
+#### Tool for manual testing and visualization of the fitness function  
+#### -----------------------------------------------------------------####
+
+
 #### Population trait distribution ####
 k <- 10000              # Population size
 mainland_opt <- 0       # Local optimum
