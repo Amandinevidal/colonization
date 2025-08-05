@@ -17,7 +17,7 @@ Title <- "Colonization IBM"
 
 # Colonization IBM
 
-This repository contains the code for IBM simulations.
+This repository implements an individual-based model simulating two distinct habitats (continent and island) where individuals carry a quantitative trait subject to mutation and local selection towards an ecological optimum specific to each habitat. The model follows eco-evolutionary dynamics, including mutation, migration, reproduction and colonization, in order to analyze the success of colonization events according to demographic and ecological parameters.
 
 ## Contents
 

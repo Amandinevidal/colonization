@@ -2,7 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-.ed.R
 # Ignore result repetory for now
 results/
 colonization_success.Rout
