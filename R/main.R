@@ -1,11 +1,11 @@
 #### -----------------------------------------------------------------####
 #### Author : Amandine Vidal-Hosteng
 #### Encoding : UTF-8
-#### Email : a.y.vidal-hosteng@rug.nl
+#### Email : amandine.vidalhosteng@gmail.com
 #### File path : colonization/main.R
 #### 
-#### Main file: contains the R code for the individual based model and
-#### run a simulation
+#### Contains the R code for the individual based model and run a simulation
+#### Sequential version
 #### -----------------------------------------------------------------####
 
 #### Files initialization / Library / environment ####

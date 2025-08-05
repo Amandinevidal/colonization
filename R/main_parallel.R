@@ -1,4 +1,12 @@
-
+#### -----------------------------------------------------------------####
+#### Author : Amandine Vidal-Hosteng
+#### Encoding : UTF-8
+#### Email : amandine.vidalhosteng@gmail.com
+#### File path : colonization/main.R
+#### 
+#### Contains the R code for the individual based model and run a simulation
+#### Parallelized version - check parameters file for cores numbers
+#### -----------------------------------------------------------------####
 
 #### Files initialization / Library / environment ####
 rm(list = ls())                                                                               # clear environment
