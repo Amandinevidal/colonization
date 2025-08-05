@@ -1,7 +1,7 @@
 #### -----------------------------------------------------------------####
 #### Author : Amandine Vidal-Hosteng
 #### Encoding : UTF-8
-#### Email : a.y.vidal-hosteng@rug.nl
+#### Email : amandine.vidalhosteng@gmail.com
 #### File path : colonization/functions.R
 #### 
 #### This file contains a suite of functions designed to run the simulation
