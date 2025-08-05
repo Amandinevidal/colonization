@@ -4,7 +4,7 @@
 #### Email : amandine.vidalhosteng@gmail.com
 #### File path : colonization/test_param.R
 #### 
-#### Use simulation output (targz) to calcul colonization success
+#### Use simulation output (.tar.gz) to calculate colonization success
 #### -----------------------------------------------------------------####
 
 # We want to quantify the success of colonization such as:
