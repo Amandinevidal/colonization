@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# Demander à l'utilisateur d'entrer le nom de la simulation
+# Ask user for a simulation name
 echo "Please enter the simulation name: "
 read sim_name
 
-# Définir le nom du fichier de sortie en fonction du nom de la simulation
+# Define output file name with the simulation name given earlier
 output_file="results/${sim_name}_main.Rout"
 
-# Créer le dossier results s'il n'existe pas déjà
+# Create result file if it doesn't exist yet
 mkdir -p results
 
-# Exécuter la simulation avec le nom de fichier de sortie donné
+# Execute simulation with accurate simulation name
 R CMD BATCH --no-save R/main_parallel.R $output_file &
 
-# Afficher un message de confirmation
+# Confirmation message
 echo "Simulation $sim_name is running. Output will be saved to $output_file"
