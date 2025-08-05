@@ -1,3 +1,12 @@
+#### -----------------------------------------------------------------####
+#### Author : Amandine Vidal-Hosteng
+#### Encoding : UTF-8
+#### Email : amandine.vidalhosteng@gmail.com
+#### File path : colonization/test_param.R
+#### 
+#### Use simulation output (targz) to calcul colonization success
+#### -----------------------------------------------------------------####
+
 # We want to quantify the success of colonization such as:
 #   - the number of (surviving) individuals emerging from a colonization events
 #   - the number of generation emerging from a colonization event
@@ -119,11 +128,11 @@ get_descendant_stats <- function(ind, g, phylo_dt, data_dt, colonist_dt) {
   return(list(nb_des = nb_des, p_des = p_des, av_x = av_x))
 }
 
-#### Code principal ####
+#### Code ####
 
 folder_path <- "results/"
 tar_files <- list.files(folder_path, pattern = "\\.tar\\.gz$", full.names = TRUE)
-tar_files <- c("results//B3.tar.gz","results//C3.tar.gz","results//D3.tar.gz")
+
 for (tar_file in tar_files) { # START Loop over simulations
   sim_name <- sub("\\.tar\\.gz$", "", basename(tar_file))
   
@@ -243,4 +252,3 @@ for (tar_file in tar_files) { # START Loop over simulations
   
 } # END Loop over simulations
 
-# suppressMessages()
