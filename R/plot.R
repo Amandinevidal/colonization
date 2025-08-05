@@ -65,6 +65,7 @@ param_glossary[53,] <- c("C3",2000,0,0.01)
 param_glossary[54,] <- c("D3",4000,0,0.01)
 param_glossary[55,] <- c("E3",5000,0,0.01)
 
+
 # DATA ####
 folder_path <- "results/"
 
@@ -94,6 +95,241 @@ data <- subset(data, nb_des > 0)
 
 df <- merge(data, param_glossary, by = "sim_id")
 names(df)[names(df) == "k"] <- "continent_size"
+
+# 1. Ajouter la pression de propagule
+df <- df %>%
+  mutate(
+    continent_size = as.numeric(continent_size),
+    mr = as.numeric(mr),
+    PP = continent_size * mr
+  )
+
+# 2. Créer les classes de descendants
+df <- df %>%
+  mutate(descendant_class = case_when(
+    nb_des <= 2 ~ "1-2",
+    nb_des <= 10 ~ "3-10",
+    nb_des > 10 ~ ">10"
+  ))
+
+df <- df %>%
+  mutate(
+    continent_size = as.numeric(continent_size),
+    mr = as.numeric(mr),
+    PP = continent_size * mr,
+    dopt = factor(dopt, levels = sort(unique(as.numeric(dopt)))),  # ordre de la légende
+    descendant_class = factor(
+      case_when(
+        nb_des <= 2 ~ "1-2",
+        nb_des <= 10 ~ "3-10",
+        nb_des > 10 ~ ">10"
+      ),
+      levels = c("1-2", "3-10", ">10")  # ordre des facettes
+    )
+  )
+
+
+# 3. Compter le nombre d'événements par classe, par sim et replicate
+colonisation_classes <- df %>%
+  group_by(sim_id, replicate, dopt, PP, descendant_class) %>%
+  summarise(n_col = n(), .groups = "drop")
+
+# 4. Calculer la moyenne par groupe
+summary_df <- colonisation_classes %>%
+  group_by(dopt, PP, descendant_class) %>%
+  summarise(
+    mean_col = mean(n_col),
+    sd_col = sd(n_col),
+    n = n(),
+    se = sd_col / sqrt(n),
+    ic95 = 1.96 * se,
+    .groups = "drop"
+  )
+
+# 5. Graphique
+descendant_labeller <- function(x) {
+  paste0("Number of descendants per \ncolonization: ", x)
+}
+
+my_colors <- c(
+  "0"   = "#0093be",  # vert-bleu
+  "1" = "#66A61E",  # vert olive
+  "2"   = "#FFD92F",  # jaune
+  "5" = "#E69F00",  # orange (palette CUD)
+  "10"  = "#ca2500"   # rouge foncé (CUD)
+)
+
+p <- ggplot(summary_df, aes(x = PP, y = mean_col, color = factor(dopt))) +
+  geom_line(size=1.5) +
+  geom_point(size=3) +
+  geom_ribbon(
+    aes(ymin = mean_col - ic95, ymax = mean_col + ic95, fill = factor(dopt)),
+    alpha = 0.2, color = NA
+  ) +
+  facet_wrap(
+    ~ descendant_class,
+    scales = "free_y",
+    labeller = as_labeller(descendant_labeller)
+  ) + 
+  labs(
+    x = "Propagule pressure (mainland size * migration probability)",
+    y = "Mean number of colonisations (square root scale)",
+    color = "Δ habitat:",
+    fill = "Δ habitat:"
+  ) +
+  scale_y_sqrt() +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors) +
+  theme_bw(base_size = 30) +
+  theme(legend.position = "top")
+
+png("results/plots/mean_number_col_nb_des.png", width = 1500, height = 800)
+print(p)
+dev.off()
+
+library(dplyr)
+library(ggplot2)
+
+data <- subset(data, nb_des > 0)
+
+df <- merge(data, param_glossary, by = "sim_id")
+names(df)[names(df) == "k"] <- "continent_size"
+
+# 1. Ajouter la pression de propagule
+df <- df %>%
+  mutate(
+    continent_size = as.numeric(continent_size),
+    mr = as.numeric(mr),
+    PP = continent_size * mr,
+    dopt = factor(dopt, levels = sort(unique(as.numeric(dopt))))
+  )
+
+# 2. Créer les classes de temps de persistance
+df <- df %>%
+  mutate(
+    persistence_class = factor(case_when(
+      p_des <= 50 ~ "0–50",
+      p_des <= 100 ~ "50–100",
+      p_des > 100 ~ "100+"
+    ), levels = c("0–50", "50–100", "100+"))
+  )
+
+# 3. Compter le nombre d'événements par classe, par sim et replicate
+colonisation_classes <- df %>%
+  group_by(sim_id, replicate, dopt, PP, persistence_class) %>%
+  summarise(n_col = n(), .groups = "drop")
+
+# 4. Calculer les moyennes et intervalles
+summary_df <- colonisation_classes %>%
+  group_by(dopt, PP, persistence_class) %>%
+  summarise(
+    mean_col = mean(n_col),
+    sd_col = sd(n_col),
+    n = n(),
+    se = sd_col / sqrt(n),
+    ic95 = 1.96 * se,
+    .groups = "drop"
+  )
+
+# 5. Facet labels
+persistence_labeller <- function(x) {
+  paste0("Persistence time per \ncolonization: ", x)
+}
+
+# 6. Graphique
+p <- ggplot(summary_df, aes(x = PP, y = mean_col, color = factor(dopt))) +
+  geom_line(size= 1.5) +
+  geom_point(size = 3) +
+  geom_ribbon(
+    aes(ymin = mean_col - ic95, ymax = mean_col + ic95, fill = factor(dopt)),
+    alpha = 0.2, color = NA
+  ) +
+  facet_wrap(
+    ~ persistence_class,
+    scales = "free_y",
+    labeller = as_labeller(persistence_labeller)
+  ) +
+  labs(
+    x = "Propagule pressure (mainland size × migration probability)",
+    y = "Mean number of colonisations (square root scale)",
+    color = "Δ habitat:",
+    fill = "Δ habitat:"
+  ) +
+  scale_y_sqrt() +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors) +
+  theme_bw(base_size = 30) +
+  theme(legend.position = "top")
+
+# 7. Sauvegarde
+png("results/plots/mean_number_col_persistence.png", width = 1500, height = 800)
+print(p)
+dev.off()
+
+library(dplyr)
+library(ggplot2)
+
+df <- merge(data, param_glossary, by = "sim_id")
+names(df)[names(df) == "k"] <- "continent_size"
+
+# Étape 1 : Ajouter la variable PP
+df <- df %>%
+  mutate(
+    continent_size = as.numeric(continent_size),
+    mr = as.numeric(mr),
+    PP = continent_size * mr,
+    dopt = factor(dopt, levels = sort(unique(as.numeric(dopt))))
+  )
+
+# Étape 2 : Nombre d’événements de colonisation par simulation
+colonisation_counts <- df %>%
+  group_by(sim_id, replicate, continent_size, mr, PP, dopt) %>%
+  summarise(n_col = n(), .groups = "drop")
+
+# Étape 3 : Moyenne par combinaison de paramètres
+summary_df <- colonisation_counts %>%
+  group_by(continent_size, mr, PP, dopt) %>%
+  summarise(
+    mean_col = mean(n_col),
+    sd_col = sd(n_col),
+    n = n(),
+    se = sd_col / sqrt(n),
+    ic95 = 1.96 * se,
+    .groups = "drop"
+  )
+
+# Couleurs
+my_colors <- c(
+  "0"  = "#0093be",
+  "1"  = "#66A61E",
+  "2"  = "#FFD92F",
+  "5"  = "#E69F00",
+  "10" = "#ca2500"
+)
+
+# Étape 4 : Graphique
+p <- ggplot(summary_df, aes(x = PP, y = mean_col, color = factor(dopt))) +
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_ribbon(
+    aes(ymin = mean_col - ic95, ymax = mean_col + ic95, fill = factor(dopt)),
+    alpha = 0.2, color = NA
+  ) +
+  labs(
+    x = "Propagule pressure (mainland size × migration probability)",
+    y = "Mean number of colonisations (square root scale)",
+    color = expression(Delta~"habitat:"),
+    fill = expression(Delta~"habitat:")
+  ) +
+  scale_y_sqrt() +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors) +
+  theme_bw(base_size = 30) +
+  theme(legend.position = "top")
+
+png("results/plots/mean_number_col_curves.png", width = 1500, height = 800)
+print(p)
+dev.off()
 
 breaks <- c(0, 1, 3, 10, Inf)
 labels <- c("0", "1-2", "3-10", "10+")
@@ -142,9 +378,9 @@ p <- ggplot(colonisation_counts, aes(x = as.factor(continent_size), y = n_events
   scale_fill_manual(
     values = c("500" = "blue", "1000" = "green", "2000" = "yellow", "4000" = "orange", "5000" = "red")
   ) + 
-  labs(x = "Continent size", y = "Number of colonizations",
+  labs(x = "mainland size", y = "Number of colonizations",
        title = "Total number of colonizations",
-       fill = "Continent size") +
+       fill = "mainland size") +
   facet_grid(
     dopt ~ mr,
     labeller = labeller(
@@ -170,6 +406,53 @@ png("results/plots/total_number_of_colonizations.png", width = 1000, height = 80
 print(p)
 dev.off()
 
+replicate_counts <- df %>%
+  group_by(sim_id, replicate, continent_size, dopt, mr) %>%
+  summarise(n_events = n(), .groups = "drop")
+agg_data <- replicate_counts %>%
+  group_by(continent_size, dopt, mr) %>%
+  summarise(
+    mean = mean(n_events),
+    se = sd(n_events) / sqrt(n()),
+    ci_low = mean - qt(0.975, df = n() - 1) * se,
+    ci_high = mean + qt(0.975, df = n() - 1) * se,
+    .groups = "drop"
+  )
+
+p <- ggplot(agg_data, aes(x = as.factor(continent_size), y = mean, fill = as.factor(continent_size))) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 0.2, position = position_dodge(width = 0.9)) +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "yellow", "4000" = "orange", "5000" = "red")
+  ) +
+  labs(
+    x = "mainland size", y = "Mean number of colonizations ± 95% CI",
+    fill = "mainland size"
+  ) +
+  facet_grid(
+    dopt ~ mr,
+    labeller = labeller(
+      dopt = function(x) paste("Δ habitat:", x),
+      mr = function(x) paste("Migration rate:", x)
+    ),
+    scales = "free_y"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),
+    plot.title = element_text(size = 20, face = "bold"),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 20),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    strip.background = element_rect(fill = "grey90", color = "grey50"),
+    strip.text = element_text(size = 18)
+  )
+
+png("results/plots/mean_number_of_colonizations.png", width = 1000, height = 800)
+print(p)
+dev.off()
 
 p <- ggplot(df, aes(x = nb_des_group, fill = as.factor(continent_size))) + 
   geom_bar(position = "dodge") +
@@ -201,6 +484,57 @@ p <- ggplot(df, aes(x = nb_des_group, fill = as.factor(continent_size))) +
   )
 
 png("results/plots/total_number_of_descendants.png", width = 1000, height = 800)
+print(p)
+dev.off()
+
+# Assure que df est une data.table
+setDT(df)
+
+# Compter les événements par simulation/réplica/groupe
+replicate_counts <- df[, .N, by = .(sim_id, replicate, continent_size, dopt, mr, nb_des_group)]
+
+# Calculer moyenne et IC95 pour chaque combinaison
+summary_stats <- replicate_counts[, .(
+  mean = mean(N),
+  se = sd(N) / sqrt(.N),
+  ci_low = mean(N) - qt(0.975, df = .N - 1) * sd(N) / sqrt(.N),
+  ci_high = mean(N) + qt(0.975, df = .N - 1) * sd(N) / sqrt(.N)
+), by = .(continent_size, dopt, mr, nb_des_group)]
+
+p <- ggplot(summary_stats, aes(x = nb_des_group, y = mean, fill = as.factor(continent_size))) +
+  geom_col(position = position_dodge(width = 0.9)) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high),
+                position = position_dodge(width = 0.9),
+                width = 0.3) +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow", "5000" = "red")
+  ) +
+  facet_grid(mr ~ dopt,
+             labeller = labeller(
+               dopt = function(x) paste("Δ habitat:", x),
+               mr = function(x) paste("Migration rate:", x)
+             ),
+             scales = "free_y") +
+  labs(
+    x = "Number of descendants",
+    y = "Mean number of events (log10) ± 95% CI",
+    fill = "Continent size"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),
+    plot.title = element_text(size = 20, face = "bold"),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 20),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.background = element_rect(fill = "grey90", color = "grey50"),
+    strip.text = element_text(size = 18)
+  )+ scale_y_log10()
+
+png("results/plots/mean_number_of_descendants.png", width = 1500, height = 800)
 print(p)
 dev.off()
 
@@ -238,6 +572,68 @@ png("results/plots/total_time_persistence_of_lineages.png", width = 1000, height
 print(p)
 dev.off()
 
+# Assure que df est une data.table
+setDT(df)
+
+# Compter les événements par simulation/réplica/groupe
+replicate_counts <- df[, .N, by = .(sim_id, replicate, continent_size, dopt, mr, p_des_group)]
+
+# Calculer moyenne et IC95 pour chaque combinaison
+summary_stats <- replicate_counts[, .(
+  mean = mean(N),
+  se = sd(N) / sqrt(.N),
+  ci_low = mean(N) - qt(0.975, df = .N - 1) * sd(N) / sqrt(.N),
+  ci_high = mean(N) + qt(0.975, df = .N - 1) * sd(N) / sqrt(.N)
+), by = .(continent_size, dopt, mr, p_des_group)]
+
+# Calculer un offset pour décaler toutes les valeurs positives
+offset <- abs(min(summary_stats$ci_low, na.rm = TRUE)) + 1.1
+
+# Appliquer la transformation log10 avec offset sur les moyennes et bornes CI
+summary_stats$mean_log <- log10(summary_stats$mean + offset)
+summary_stats$ci_low_log <- log10(summary_stats$ci_low + offset)
+summary_stats$ci_high_log <- log10(summary_stats$ci_high + offset)
+
+# Puis dans ggplot, utiliser ces variables transformées au lieu de mean, ci_low, ci_high
+p <- ggplot(summary_stats, aes(x = p_des_group, y = mean_log, fill = as.factor(continent_size))) +
+  geom_col(position = position_dodge(width = 0.9)) +
+  geom_errorbar(aes(ymin = ci_low_log, ymax = ci_high_log),
+                position = position_dodge(width = 0.9),
+                width = 0.3) +
+  scale_fill_manual(
+    values = c("500" = "blue", "1000" = "green", "2000" = "orange", "4000" = "yellow", "5000" = "red")
+  ) +
+  facet_grid(mr ~ dopt,
+             labeller = labeller(
+               dopt = function(x) paste("Δ habitat:", x),
+               mr = function(x) paste("Migration rate:", x)
+             ),
+             scales = "free_y") +
+  labs(
+    x = "Time persistence of lineages",
+    y = paste0("Mean number of events (log10) ± 95% CI"),
+    fill = "Continent size"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    text = element_text(size = 20),
+    plot.title = element_text(size = 20, face = "bold"),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 20),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.background = element_rect(fill = "grey90", color = "grey50"),
+    strip.text = element_text(size = 18)
+  )
+
+
+png("results/plots/mean_time_persistence.png", width = 1500, height = 800)
+print(p)
+dev.off()
+
+
 # Assure que colonist_x est numérique
 df$colonist_x <- as.numeric(df$colonist_x)
 
@@ -270,14 +666,14 @@ p <- ggplot(df, aes(x = colonist_x, color = as.factor(continent_size), fill = as
   facet_grid(mr ~ dopt,
              labeller = labeller(
                dopt = function(x) paste("Δ habitat:", x),
-               mr = function(x) paste("Migration rate:", x)
+               mr = function(x) paste("Migration probability:", x)
              ),
              scales = "free_y") +
   labs(
     x = "Colonist trait",
     y = "Density",
-    fill = "Continent size",
-    color = "Continent size"
+    fill = "Mainland size",
+    color = "Mainland size"
   ) +
   theme_minimal() +
   theme(
@@ -2191,10 +2587,74 @@ ggplot(summary_df, aes(x = continent_size, y = as.factor(dopt), fill = max_p_des
   )
 
 
-#### ECOLOGICAL TRAIT ####
+#### schema ####
+
+library(ggplot2)
+library(dplyr)
+
+asym_gaussian <- function(x, center, slope_left = 1, slope_right = 1, xmax = 10) {
+  y <- ifelse(
+    x < center,
+    exp(- ((x - center)^2) / (2 * slope_left^2)),
+    exp(- ((x - center)^2) / (2 * slope_right^2))
+  )
+  # Valeurs aux extrémités
+  y0 <- ifelse(
+    0 < center,
+    exp(- ((0 - center)^2) / (2 * slope_left^2)),
+    exp(- ((0 - center)^2) / (2 * slope_right^2))
+  )
+  yend <- ifelse(
+    xmax < center,
+    exp(- ((xmax - center)^2) / (2 * slope_left^2)),
+    exp(- ((xmax - center)^2) / (2 * slope_right^2))
+  )
+  # Normalisation pour y(0) = 0 et y(xmax) = 0
+  y <- y - y0 - yend
+  y[y < 0] <- 0
+  y <- y / max(y)
+  return(y)
+}
+
+x_vals <- seq(0, 10, length.out = 300)
+
+params <- tibble(
+  label = c("Intermediate", "Highly pre-adapted", "Not pre-adapted"),
+  center = c(5, 2.5, 7.5),
+  slope_left = c(1, 2, 3),
+  slope_right = c(1, 3, 2),
+  color = c("black", "blue", "red")
+)
+
+df <- params %>%
+  rowwise() %>%
+  do({
+    data.frame(
+      x = x_vals,
+      y = asym_gaussian(x_vals, .$center, .$slope_left, .$slope_right),
+      label = .$label,
+      color = .$color
+    )
+  }) %>%
+  ungroup()
+
+p <- ggplot(df, aes(x = x, y = y, color = label)) +
+  geom_line(size = 1.2) +
+  scale_color_manual(values = setNames(params$color, params$label)) +
+  labs(
+    x = "Propagule pressure (mainland size)",
+    y = "Colonization success",
+    color = "Habitat difference",
+  ) +
+  theme_bw(base_size = 30) + 
+  theme(legend.position = "top",
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
 
 
-
+png("results/plots/schema.png",width=1000,height = 800)
+print(p)
+dev.off()
 
 
 
