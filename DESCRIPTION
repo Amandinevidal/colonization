@@ -1,9 +1,9 @@
 Package: Colonization
-Title: Colonization IBM
-Version: 0.0.0
+Title: Individual-Based Model of Island Colonization Dynamics
+Version: 0.1.0
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: IBM to test variation of colonization probability based on ecological and evolutionary hypothesis in an mainland-island system
+    person("Amandine", "Vidal-Hosteng", , "amandine.vidalhosteng@gmail.com", role = c("aut", "cre"))
+Description: An individual-based model to test variation in colonization probability based on ecological and evolutionary hypotheses in a mainland-island system.
 License: MIT + file LICENSE
 ByteCompile: true
 Encoding: UTF-8

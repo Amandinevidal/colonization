@@ -32,7 +32,7 @@ This repository contains the code for IBM simulations.
     - [summary_variables.R]() - Use simulation output (.tar.gz) to summarize key simulation variables
 
   - [:rocket: simulation.sh]() - bash script to run a simulation from the command line.  
-  :warning: _Caution: This bash script is set up to launch the **parallelized** version of the main R simulation (main_parallel.R). Make sure your system supports parallel execution and adjust the script if you want to run the sequential version instead._ 
+  :warning: _Caution: This bash script is set up to launch the **parallelized** version of the main script. Make sure your system supports parallel execution and adjust the script if you want to run the sequential version instead._ 
 
 ### Licenses
 

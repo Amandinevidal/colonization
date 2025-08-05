@@ -24,9 +24,9 @@ This repository contains the code for IBM simulations.
 - [:rocket: simulation.sh]() - bash script to run a simulation from the
   command line.  
   :warning: *Caution: This bash script is set up to launch the
-  **parallelized** version of the main R simulation (main_parallel.R).
-  Make sure your system supports parallel execution and adjust the
-  script if you want to run the sequential version instead.*
+  **parallelized** version of the main script. Make sure your system
+  supports parallel execution and adjust the script if you want to run
+  the sequential version instead.*
 
 ### Licenses
 
